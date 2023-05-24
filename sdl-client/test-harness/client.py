@@ -24,6 +24,12 @@ class CMSClient(object):
     def record_training_stats(self, avg_speed, dl_delay):
         self.job_avg_training_speed = avg_speed
         self.prev_batch_dl_delay = dl_delay
+    
+    def job_ended_nofifcation(self,job_id):
+   
+        messageRequest = pb2.JobEndedMessage(job_id=job_id)
+        response = self.stub.ProcessJobEndedMessage(messageRequest)
+        print(response.message)
 
     def register_training_job(self,job_id:int,batch_size:int):
         """

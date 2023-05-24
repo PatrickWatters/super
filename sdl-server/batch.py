@@ -17,23 +17,12 @@ class BatchGroup():
     def __init__(self,group_id, batches):
         self.group_id = group_id
         self.batches:dict = batches
-        self.prefetch_priorityq = PriorityQueue()
+        self.priorityq = PriorityQueue()
         self.processed_by =[]
         self.cached_batches = []
         self.isActive = True
-
-        #self.batch_ids = self.batches.keys()
-
-    def update_batch_access_estimate(self,batch_id,access_time):
-        self.prefetch_priorityq.push(batch_id, access_time)
-
-    def findSubsituteBatch(self,candidate_batch_ids):
-        overlap = set(candidate_batch_ids).intersection(self.cached_batches)
-        if len(overlap) > 0:
-            return overlap[0]
-        else:
-            return None
-    
+        
+            
     def batchIsCached(self,bacth_id):
         return self.batches[bacth_id].isCached
     

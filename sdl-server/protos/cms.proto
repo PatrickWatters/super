@@ -5,12 +5,17 @@ package cms;
 service CacheManagementService{
   // A simple RPC.
   // Obtains the MessageResponse at a given position.
+rpc ProcessJobEndedMessage(JobEndedMessage) returns (MessageResponse) {}
  rpc GetNextBatchForJob(GetNextBatchForJobMessage) returns (GetNextBatchForJobResponse) {}
  rpc RegisterNewTrainingJob(RegisterTrainingJobMessage) returns (RegisterTrainingJobResponse) {}
  rpc GetServerResponse(Message) returns (MessageResponse) {}
 }
 
 //Incoming Messages
+message JobEndedMessage{
+  int32  job_id = 1;
+}
+
 message GetNextBatchForJobMessage{
   int32  job_id = 1;
   float avg_training_speed =2;

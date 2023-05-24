@@ -20,7 +20,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
     def __init__(self, *args, **kwargs):
         print(f'Running Setup for Cache Management Service')
         self.batch_groups:Dict[str, BatchGroup] = {}
-        self.training_jobs = {}
+        self.active_training_jobs = {}
         self.global_batch_group_idx = 0
         self._read_config()
         self._check_environment()
@@ -71,8 +71,8 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         else:
             batches_per_epoch = (len(self.train_dataset) + batch_size - 1) // batch_size  # type: ignore[arg-type]
 
-        if job_id not in self.training_jobs:
-            self.training_jobs[job_id] = newjob
+        if job_id not in self.active_training_jobs:
+            self.active_training_jobs[job_id] = newjob
             result = f'Job with Id {job_id} has been successfully regsistered!'
             result = {'message': result, 'dataset':json.dumps(self.train_dataset._blob_classes), 'registered': True,'batches_per_epoch': batches_per_epoch}    
         else:
@@ -81,13 +81,13 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         return pb2.RegisterTrainingJobResponse(**result)
     
     def GetNextBatchForJob(self,request, context):
-        training_job:MLTrainingJob = self.training_jobs[request.job_id]
+        training_job:MLTrainingJob = self.active_training_jobs[request.job_id]
         training_job.set_avg_training_speed(request.avg_training_speed)
         training_job.update_data_laoding_delay(request.prev_batch_dl_delay)
         training_job.increment_batches_processed()
 
         if len(training_job.epoch_batches_remaining) < 1: #batches exhausted, job starting a new epoch
-            self._assign_job_batches_for_epoch(training_job=training_job)
+            self._assign_new_batches_to_job_for_epoch(training_job=training_job)
             training_job.reset_epoch_timer()
             training_job.reset_dl_delay()
 
@@ -97,13 +97,15 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
 
         return pb2.GetNextBatchForJobResponse(**result)
     
-    def _assign_job_batches_for_epoch(self,training_job:MLTrainingJob):
+    def _assign_new_batches_to_job_for_epoch(self,training_job:MLTrainingJob):
         if training_job.current_batch_group is not None:
             self.batch_groups[training_job.current_batch_group].processed_by.append(training_job.job_id)
 
         if  training_job.job_id in self.batch_groups[self.global_batch_group_idx].processed_by:
             self._gen_new_group_of_batches()
-        training_job.set_batches_to_process(self.global_batch_group_idx,self.batch_groups[self.global_batch_group_idx].batches)
+        
+        training_job.set_batches_to_process(self.global_batch_group_idx,self.batch_groups[self.global_batch_group_idx].batches,
+                                            self.batch_groups[self.global_batch_group_idx].priorityq)
         training_job.increment_epochs_processed()  
 
     def _find_substitute_batch(self,batch_group:BatchGroup,epoch_batches_remaining, orgional_batch_id):
@@ -116,6 +118,16 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
                 break
         return next_batch_id,isCached
     
+    
+    def ProcessJobEndedMessage(self, request, context):
+        job_id = request.job_id
+        job:MLTrainingJob = self.active_training_jobs[job_id]
+        start_time, finish_time = job.end_job()
+        del self.active_training_jobs[job_id]
+
+        result = f'Job with Id {job_id} finished! start time: {start_time}, finish time:{finish_time}'
+        result = {'message': result, 'received': True}
+        return pb2.MessageResponse(**result)
 
     def GetServerResponse(self, request, context):
         # get the string from the incoming request
