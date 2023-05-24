@@ -11,6 +11,8 @@ class CMSClient(object):
     def __init__(self):
         self.host = 'localhost'
         self.server_port = 50052
+        self.job_avg_training_speed =0
+        self.prev_batch_dl_delay =0
 
         # instantiate a channel
         self.channel = grpc.insecure_channel(
@@ -18,7 +20,11 @@ class CMSClient(object):
 
         # bind the client and the server
         self.stub = pb2_grpc.CacheManagementServiceStub(self.channel)
-    
+
+    def record_training_stats(self, avg_speed, dl_delay):
+        self.job_avg_training_speed = avg_speed
+        self.prev_batch_dl_delay = dl_delay
+
     def register_training_job(self,job_id:int,batch_size:int):
         """
         Client function to call register a new ML training job
@@ -31,6 +37,14 @@ class CMSClient(object):
         else:
             labelled_dataset = None
         return response.message, job_registered,labelled_dataset, response.batches_per_epoch
+    
+    def get_next_batch_for_job(self,job_id):
+        """
+        Client function to get next batch for ML training job
+        """
+        messageRequest = pb2.GetNextBatchForJobMessage(job_id=job_id,avg_training_speed =self.job_avg_training_speed, prev_batch_dl_delay = self.prev_batch_dl_delay)
+        response = self.stub.GetNextBatchForJob(messageRequest)
+        return  (response.batch_id, json.loads(response.batch_metadata), response.isCached)
     
     def get_url(self, message):
         """

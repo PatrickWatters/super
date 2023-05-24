@@ -2,13 +2,18 @@ import functools
 from typing import (Any,Callable,Optional,Dict,List,Tuple,TypeVar,Union,Iterable,)
 import json
 import boto3
+from torch.utils.data.sampler import RandomSampler,BatchSampler, SequentialSampler
+from collections import OrderedDict
+from batch import Batch, BatchGroup
 
 s3_client = boto3.client('s3')
 s3Resource = boto3.resource("s3")
 
 class Dataset():
-    def __init__(self,s3_bucket_name,prefix):
+    def __init__(self,s3_bucket_name,prefix, batch_size, drop_last):
         self.bucket_name = s3_bucket_name
+        self.batch_size = batch_size
+        self.drop_last =drop_last
         self.prefix = prefix
         self.IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG','.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',]
         self._blob_classes = self._classify_blobs()
@@ -67,3 +72,15 @@ class Dataset():
         if not s.startswith(prefix):
             return s
         return s[len(prefix) :]
+    
+    def create_group_of_batches(self,seed:int):
+        batches = OrderedDict()
+        #base_sampler = RandomSampler(self)
+        base_sampler = SequentialSampler(self)
+        batch_sampler = BatchSampler(base_sampler, batch_size=self.batch_size, drop_last=False)
+        for i,batch in enumerate(batch_sampler):
+                batch_id = abs(hash(frozenset(batch)))
+                batches[batch_id] = batch
+        return batches
+
+    

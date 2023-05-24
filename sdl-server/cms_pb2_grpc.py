@@ -14,6 +14,11 @@ class CacheManagementServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.GetNextBatchForJob = channel.unary_unary(
+                '/cms.CacheManagementService/GetNextBatchForJob',
+                request_serializer=cms__pb2.GetNextBatchForJobMessage.SerializeToString,
+                response_deserializer=cms__pb2.GetNextBatchForJobResponse.FromString,
+                )
         self.RegisterNewTrainingJob = channel.unary_unary(
                 '/cms.CacheManagementService/RegisterNewTrainingJob',
                 request_serializer=cms__pb2.RegisterTrainingJobMessage.SerializeToString,
@@ -29,10 +34,16 @@ class CacheManagementServiceStub(object):
 class CacheManagementServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def RegisterNewTrainingJob(self, request, context):
+    def GetNextBatchForJob(self, request, context):
         """A simple RPC.
         Obtains the MessageResponse at a given position.
         """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RegisterNewTrainingJob(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -46,6 +57,11 @@ class CacheManagementServiceServicer(object):
 
 def add_CacheManagementServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'GetNextBatchForJob': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetNextBatchForJob,
+                    request_deserializer=cms__pb2.GetNextBatchForJobMessage.FromString,
+                    response_serializer=cms__pb2.GetNextBatchForJobResponse.SerializeToString,
+            ),
             'RegisterNewTrainingJob': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterNewTrainingJob,
                     request_deserializer=cms__pb2.RegisterTrainingJobMessage.FromString,
@@ -65,6 +81,23 @@ def add_CacheManagementServiceServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class CacheManagementService(object):
     """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def GetNextBatchForJob(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cms.CacheManagementService/GetNextBatchForJob',
+            cms__pb2.GetNextBatchForJobMessage.SerializeToString,
+            cms__pb2.GetNextBatchForJobResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def RegisterNewTrainingJob(request,

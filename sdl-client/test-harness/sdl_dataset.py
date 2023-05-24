@@ -31,9 +31,13 @@ class SDLDataset(Dataset):
     
     def __getitem__(self, input):
         batch_id = input[0]
+        batch_indices = input[1]
+        isCached = input[2]
         batch_data = redis_client.get_data(batch_id)
         if batch_data != None:
             cache_hit = True
             buffer = io.BytesIO(batch_data)
             batch_with_labels_dict = torch.load(buffer)
             return batch_with_labels_dict['inputs'],batch_with_labels_dict['labels'], batch_id,cache_hit
+        else:
+            return None, None, batch_id, isCached

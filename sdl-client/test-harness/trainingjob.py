@@ -22,9 +22,9 @@ class SDLSampler():
         self.epoch = 0
 
     def __iter__(self):
-        for i in range(0, self.num_btches): 
-            data, is_cached, batch_id = self.sdl_client.next_batch(self.job_id, self.epoch)
-            yield is_cached,batch_id,data
+        for i in range(0, self.num_batches): 
+            yield self.sdl_client.get_next_batch_for_job(self.job_id)
+            #yield batch_id,btach_metadata,is_cached
     
     def __len__(self):
         return self.num_batches
@@ -97,16 +97,16 @@ def main():
         exit()
         
     train_dataset = SDLDataset(job_id=args.jobid, blob_classes=labelled_dataset,client=client, transform=transform, target_transform=None)
-    sdl_sampler = SDLSampler(job_id=args.jobid, batches_per_epoch=batches_per_epoch, sdl_client =client)
+    sdl_sampler = SDLSampler(job_id=args.jobid, num_batches=batches_per_epoch, sdl_client =client)
 
     train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=None, num_workers=args.num_workers, sampler=sdl_sampler, pin_memory=True if args.pin_memory == 1 else False)
     
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args)
         # train next epoch
-        train(train_loader, model, criterion, optimizer, epoch, args,device)
+        train(train_loader, model, criterion, optimizer, epoch, args,device, client)
 
-def train(train_loader, model, criterion, optimizer, epoch, args,device):
+def train(train_loader, model, criterion, optimizer, epoch, args,device, client:CMSClient):
     total_cache_hits = 0
     total_cache_misses = 0
     total_files = 0
@@ -125,7 +125,18 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device):
     # switch to train mode
     model.train()
     end = time.time()
+    for i, (images, target,batch_id, cache_hit) in enumerate(train_loader):
+        # measure data loading time
+        data_fetch_time.update(time.time() - end)
 
+        processing_started = time.time()
+        time.sleep(1.5)
+        processing_time.update(time.time() - processing_started)
+        client.record_training_stats(processing_time.avg,data_fetch_time.sum)
+
+        total_batch_time.update(time.time() - end)
+        end = time.time()
+    '''
     for i, (images, target,batch_id, cache_hit) in enumerate(train_loader):
         
         # measure data loading time
@@ -146,7 +157,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device):
         #measure time to process batch on device
         processing_started = time.time()
         #time.sleep(args.training_speed)
-        #'''
+     
         output = model(images)
         loss = criterion(output, target)
         # measure accuracy and record loss
@@ -159,12 +170,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        #'''
+      
         processing_time.update(time.time() - processing_started)
 
         # measure elapsed time
         total_batch_time.update(time.time() - end)
-
+    '''
 class AverageMeter(object):
     """Computes and stores the average and current value."""
     def __init__(self, name, fmt=":f"):

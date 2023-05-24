@@ -19,10 +19,56 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\tcms.proto\x12\x03\x63ms\"@\n\x1aRegisterTrainingJobMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\"\x1a\n\x07Message\x12\x0f\n\x07message\x18\x01 \x01(\t\"n\n\x1bRegisterTrainingJobResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07\x64\x61taset\x18\x02 \x01(\t\x12\x12\n\nregistered\x18\x03 \x01(\x08\x12\x19\n\x11\x62\x61tches_per_epoch\x18\x04 \x01(\x05\"4\n\x0fMessageResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x10\n\x08received\x18\x02 \x01(\x08\x32\xb2\x01\n\x16\x43\x61\x63heManagementService\x12]\n\x16RegisterNewTrainingJob\x12\x1f.cms.RegisterTrainingJobMessage\x1a .cms.RegisterTrainingJobResponse\"\x00\x12\x39\n\x11GetServerResponse\x12\x0c.cms.Message\x1a\x14.cms.MessageResponse\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\tcms.proto\x12\x03\x63ms\"d\n\x19GetNextBatchForJobMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\x12\x1a\n\x12\x61vg_training_speed\x18\x02 \x01(\x02\x12\x1b\n\x13prev_batch_dl_delay\x18\x03 \x01(\x02\"@\n\x1aRegisterTrainingJobMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\"\x1a\n\x07Message\x12\x0f\n\x07message\x18\x01 \x01(\t\"X\n\x1aGetNextBatchForJobResponse\x12\x10\n\x08\x62\x61tch_id\x18\x01 \x01(\t\x12\x16\n\x0e\x62\x61tch_metadata\x18\x02 \x01(\t\x12\x10\n\x08isCached\x18\x03 \x01(\x08\"n\n\x1bRegisterTrainingJobResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07\x64\x61taset\x18\x02 \x01(\t\x12\x12\n\nregistered\x18\x03 \x01(\x08\x12\x19\n\x11\x62\x61tches_per_epoch\x18\x04 \x01(\x05\"4\n\x0fMessageResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x10\n\x08received\x18\x02 \x01(\x08\x32\x8b\x02\n\x16\x43\x61\x63heManagementService\x12W\n\x12GetNextBatchForJob\x12\x1e.cms.GetNextBatchForJobMessage\x1a\x1f.cms.GetNextBatchForJobResponse\"\x00\x12]\n\x16RegisterNewTrainingJob\x12\x1f.cms.RegisterTrainingJobMessage\x1a .cms.RegisterTrainingJobResponse\"\x00\x12\x39\n\x11GetServerResponse\x12\x0c.cms.Message\x1a\x14.cms.MessageResponse\"\x00\x62\x06proto3'
 )
 
 
+
+
+_GETNEXTBATCHFORJOBMESSAGE = _descriptor.Descriptor(
+  name='GetNextBatchForJobMessage',
+  full_name='cms.GetNextBatchForJobMessage',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='job_id', full_name='cms.GetNextBatchForJobMessage.job_id', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='avg_training_speed', full_name='cms.GetNextBatchForJobMessage.avg_training_speed', index=1,
+      number=2, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='prev_batch_dl_delay', full_name='cms.GetNextBatchForJobMessage.prev_batch_dl_delay', index=2,
+      number=3, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=18,
+  serialized_end=118,
+)
 
 
 _REGISTERTRAININGJOBMESSAGE = _descriptor.Descriptor(
@@ -59,8 +105,8 @@ _REGISTERTRAININGJOBMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=18,
-  serialized_end=82,
+  serialized_start=120,
+  serialized_end=184,
 )
 
 
@@ -91,8 +137,54 @@ _MESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=84,
-  serialized_end=110,
+  serialized_start=186,
+  serialized_end=212,
+)
+
+
+_GETNEXTBATCHFORJOBRESPONSE = _descriptor.Descriptor(
+  name='GetNextBatchForJobResponse',
+  full_name='cms.GetNextBatchForJobResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='batch_id', full_name='cms.GetNextBatchForJobResponse.batch_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='batch_metadata', full_name='cms.GetNextBatchForJobResponse.batch_metadata', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='isCached', full_name='cms.GetNextBatchForJobResponse.isCached', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=214,
+  serialized_end=302,
 )
 
 
@@ -144,8 +236,8 @@ _REGISTERTRAININGJOBRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=112,
-  serialized_end=222,
+  serialized_start=304,
+  serialized_end=414,
 )
 
 
@@ -183,15 +275,24 @@ _MESSAGERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=224,
-  serialized_end=276,
+  serialized_start=416,
+  serialized_end=468,
 )
 
+DESCRIPTOR.message_types_by_name['GetNextBatchForJobMessage'] = _GETNEXTBATCHFORJOBMESSAGE
 DESCRIPTOR.message_types_by_name['RegisterTrainingJobMessage'] = _REGISTERTRAININGJOBMESSAGE
 DESCRIPTOR.message_types_by_name['Message'] = _MESSAGE
+DESCRIPTOR.message_types_by_name['GetNextBatchForJobResponse'] = _GETNEXTBATCHFORJOBRESPONSE
 DESCRIPTOR.message_types_by_name['RegisterTrainingJobResponse'] = _REGISTERTRAININGJOBRESPONSE
 DESCRIPTOR.message_types_by_name['MessageResponse'] = _MESSAGERESPONSE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
+
+GetNextBatchForJobMessage = _reflection.GeneratedProtocolMessageType('GetNextBatchForJobMessage', (_message.Message,), {
+  'DESCRIPTOR' : _GETNEXTBATCHFORJOBMESSAGE,
+  '__module__' : 'cms_pb2'
+  # @@protoc_insertion_point(class_scope:cms.GetNextBatchForJobMessage)
+  })
+_sym_db.RegisterMessage(GetNextBatchForJobMessage)
 
 RegisterTrainingJobMessage = _reflection.GeneratedProtocolMessageType('RegisterTrainingJobMessage', (_message.Message,), {
   'DESCRIPTOR' : _REGISTERTRAININGJOBMESSAGE,
@@ -206,6 +307,13 @@ Message = _reflection.GeneratedProtocolMessageType('Message', (_message.Message,
   # @@protoc_insertion_point(class_scope:cms.Message)
   })
 _sym_db.RegisterMessage(Message)
+
+GetNextBatchForJobResponse = _reflection.GeneratedProtocolMessageType('GetNextBatchForJobResponse', (_message.Message,), {
+  'DESCRIPTOR' : _GETNEXTBATCHFORJOBRESPONSE,
+  '__module__' : 'cms_pb2'
+  # @@protoc_insertion_point(class_scope:cms.GetNextBatchForJobResponse)
+  })
+_sym_db.RegisterMessage(GetNextBatchForJobResponse)
 
 RegisterTrainingJobResponse = _reflection.GeneratedProtocolMessageType('RegisterTrainingJobResponse', (_message.Message,), {
   'DESCRIPTOR' : _REGISTERTRAININGJOBRESPONSE,
@@ -230,13 +338,23 @@ _CACHEMANAGEMENTSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=279,
-  serialized_end=457,
+  serialized_start=471,
+  serialized_end=738,
   methods=[
+  _descriptor.MethodDescriptor(
+    name='GetNextBatchForJob',
+    full_name='cms.CacheManagementService.GetNextBatchForJob',
+    index=0,
+    containing_service=None,
+    input_type=_GETNEXTBATCHFORJOBMESSAGE,
+    output_type=_GETNEXTBATCHFORJOBRESPONSE,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
   _descriptor.MethodDescriptor(
     name='RegisterNewTrainingJob',
     full_name='cms.CacheManagementService.RegisterNewTrainingJob',
-    index=0,
+    index=1,
     containing_service=None,
     input_type=_REGISTERTRAININGJOBMESSAGE,
     output_type=_REGISTERTRAININGJOBRESPONSE,
@@ -246,7 +364,7 @@ _CACHEMANAGEMENTSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetServerResponse',
     full_name='cms.CacheManagementService.GetServerResponse',
-    index=1,
+    index=2,
     containing_service=None,
     input_type=_MESSAGE,
     output_type=_MESSAGERESPONSE,
