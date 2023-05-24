@@ -38,13 +38,13 @@ parser = argparse.ArgumentParser(description="PyTorch Training")
 parser.add_argument("-a","--arch",metavar="ARCH",default="resnet18",choices=model_names,help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",)
 parser.add_argument("-j", "--num-workers", default=0, type=int, metavar="N", help="number of data loading workers (default: 4)")
 parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="manual epoch number (useful on restarts)")
-parser.add_argument("-epochs","--epochs", default=4, type=int, metavar="N", help="number of total epochs to run")  # default 90
+parser.add_argument("-epochs","--epochs", default=40, type=int, metavar="N", help="number of total epochs to run")  # default 90
 parser.add_argument("--lr", "--learning-rate", default=0.1, type=float, metavar="LR", help="initial learning rate", dest="lr")
 parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
 parser.add_argument("--wd","--weight-decay",default=1e-4,type=float,metavar="W",help="weight decay (default: 1e-4)",dest="weight_decay",)
 parser.add_argument("-p", "--print-freq", default=1, type=int, metavar="N", help="print frequency (default: 1)")
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
-parser.add_argument("--batch-size", type=int, default=128)
+parser.add_argument("--batch-size", type=int, default=4)
 parser.add_argument("--pin-memory", type=int, default=0)
 best_acc1 = 0
 
@@ -130,7 +130,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
         data_fetch_time.update(time.time() - end)
 
         processing_started = time.time()
-        time.sleep(1.5)
+        time.sleep(4.5)
         processing_time.update(time.time() - processing_started)
         client.record_training_stats(processing_time.avg,data_fetch_time.sum)
 

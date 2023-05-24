@@ -1,8 +1,9 @@
 from misc.priority_queue import PriorityQueue
 import numpy as np
+from collections import OrderedDict
 
 class Batch():
-    def __init__(self,id, indices, group_id):
+    def __init__(self,id, group_id,indices):
         self.batch_id = id
         self.indices = indices
         self.last_pinged_timestamp = None
@@ -13,14 +14,16 @@ class Batch():
         self.size = len(self.indices)
 
 class BatchGroup():
-    def __init__(self,group_id,group_of_batches):
+    def __init__(self,group_id, batches):
         self.group_id = group_id
-        self.batches = group_of_batches
+        self.batches:dict = batches
         self.prefetch_priorityq = PriorityQueue()
         self.processed_by =[]
         self.cached_batches = []
         self.isActive = True
-            
+
+        #self.batch_ids = self.batches.keys()
+
     def update_batch_access_estimate(self,batch_id,access_time):
         self.prefetch_priorityq.push(batch_id, access_time)
 

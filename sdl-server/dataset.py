@@ -3,7 +3,6 @@ from typing import (Any,Callable,Optional,Dict,List,Tuple,TypeVar,Union,Iterable
 import json
 import boto3
 from torch.utils.data.sampler import RandomSampler,BatchSampler, SequentialSampler
-from collections import OrderedDict
 from batch import Batch, BatchGroup
 
 s3_client = boto3.client('s3')
@@ -73,14 +72,17 @@ class Dataset():
             return s
         return s[len(prefix) :]
     
-    def create_group_of_batches(self,seed:int):
-        batches = OrderedDict()
-        #base_sampler = RandomSampler(self)
-        base_sampler = SequentialSampler(self)
+    def generate_batches(self,seed:int, use_random_sampling:bool):
+        setOfbatches={}
+        if use_random_sampling:
+            base_sampler = RandomSampler(self)
+        else:
+            base_sampler = SequentialSampler(self)
+        
         batch_sampler = BatchSampler(base_sampler, batch_size=self.batch_size, drop_last=False)
-        for i,batch in enumerate(batch_sampler):
-                batch_id = abs(hash(frozenset(batch)))
-                batches[batch_id] = batch
-        return batches
+        for i,batch_indiceis in enumerate(batch_sampler):
+                batch_id = abs(hash(frozenset(batch_indiceis)))
+                setOfbatches[batch_id] = Batch(id=batch_id,group_id=seed, indices=batch_indiceis)
+        return setOfbatches
 
     
