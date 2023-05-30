@@ -1,6 +1,5 @@
 import grpc
 from concurrent import futures
-import time
 import cms_pb2_grpc as pb2_grpc
 import cms_pb2 as pb2
 from configparser import ConfigParser
@@ -13,6 +12,9 @@ import logging
 import json
 from batch import BatchGroup
 import threading
+from misc.unique_priority_queue import UniquePriorityQueue
+import time
+
 logging.basicConfig(format='%(asctime)s - %(message)s',filename='server.log', encoding='utf-8', level=logging.INFO)
 
 class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
@@ -22,6 +24,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self.batch_groups:Dict[str, BatchGroup] = {}
         self.active_training_jobs = {}
         self.global_batch_group_idx = 0
+        self.global_queue = UniquePriorityQueue()
         self._read_config()
         self._check_environment()
         self._gen_new_group_of_batches() #create an initial set of batches
@@ -64,7 +67,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
     def RegisterNewTrainingJob(self, request, context):
         job_id = request.job_id
         batch_size = request.batch_size 
-        newjob = MLTrainingJob(job_id,batch_size,self.look_ahead_distance,self.warm_up_distance)
+        newjob = MLTrainingJob(job_id,batch_size,self.look_ahead_distance,self.warm_up_distance,self.access_time_update_freq,global_priority_queue=self.global_queue)
 
         if self.drop_last:
             batches_per_epoch = len(self.train_dataset) // batch_size  # type: ignore[arg-type]
@@ -104,20 +107,9 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         if  training_job.job_id in self.batch_groups[self.global_batch_group_idx].processed_by:
             self._gen_new_group_of_batches()
         
-        training_job.set_batches_to_process(self.global_batch_group_idx,self.batch_groups[self.global_batch_group_idx].batches,
-                                            self.batch_groups[self.global_batch_group_idx].priorityq)
+        training_job.set_batches_to_process(self.global_batch_group_idx,self.batch_groups[self.global_batch_group_idx].batches)
         training_job.increment_epochs_processed()  
 
-    def _find_substitute_batch(self,batch_group:BatchGroup,epoch_batches_remaining, orgional_batch_id):
-        next_batch_id = orgional_batch_id
-        isCached = False
-        for batch_id in epoch_batches_remaining:
-            if batch_group.batchIsCached(batch_id):
-                next_batch_id = batch_id
-                isCached = True
-                break
-        return next_batch_id,isCached
-    
     
     def ProcessJobEndedMessage(self, request, context):
         job_id = request.job_id

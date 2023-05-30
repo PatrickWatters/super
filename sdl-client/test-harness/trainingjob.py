@@ -131,7 +131,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
         data_fetch_time.update(time.time() - end)
 
         processing_started = time.time()
-        time.sleep(0.25)
+        time.sleep(2.25)
         processing_time.update(time.time() - processing_started)
         client.record_training_stats(processing_time.avg,data_fetch_time.sum)
 

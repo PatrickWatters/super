@@ -4,14 +4,16 @@ import time
 import threading
 import logging
 import datetime
-from misc.priority_queue import PriorityQueue
+from misc.unique_priority_queue import UniquePriorityQueue
+from misc.repeated_timer import RepeatedTimer
 
 class MLTrainingJob():
-    def __init__(self,job_id,batch_size,look_ahead_distance,warm_up_distance):
+    def __init__(self,job_id,batch_size,look_ahead_distance,warm_up_distance,access_time_update_freq,global_priority_queue):
         self.job_id = job_id
         self.batch_size = batch_size
         self.warm_up_distance = warm_up_distance
         self.look_ahead_distance=look_ahead_distance
+        self.access_time_update_freq = access_time_update_freq
         self.avg_training_speed = 0
         self.data_laoding_delay = 0
         self.total_epochs_processed = -1
@@ -22,32 +24,18 @@ class MLTrainingJob():
         self.job_finished_timestamp = None
         self.epoch_timer = None
         self.epoch_batches_remaining = []
-        self.f_stop = True
-        self.bacth_group_priorityq:PriorityQueue = None
+        self.global_priority_queue:UniquePriorityQueue = global_priority_queue
         self.active = True
+        self.data_prep_service = RepeatedTimer(self.access_time_update_freq ,self.run_data_prep_task)
     
-    def reset_epoch_timer(self):
-        self.epoch_timer = time.time()
-
-    def start_data_prep_service(self):
-        self.f_stop = threading.Event()
-        self.run_data_prep()
-        
-    def stop_data_prep_service(self):
-        self.f_stop = True
-
-    def run_data_prep(self):
+    def run_data_prep_task(self):
         predicted_times ={}
         for idx in range(0,min(len(self.epoch_batches_remaining),self.look_ahead_distance)):
             batch_id = self.epoch_batches_remaining[idx]
             predicted_access_time = max(0,((idx * self.avg_training_speed) + self.data_laoding_delay) - (time.time() - self.epoch_timer))
-            self.bacth_group_priorityq.push(batch_id, predicted_access_time)
+            self.global_priority_queue.put((predicted_access_time,batch_id))
             predicted_times[batch_id] = predicted_access_time
-        
         logging.info(predicted_times)
-        if not self.f_stop == True:
-            # call f() again in 2 seconds
-            threading.Timer(4, self.run_data_prep, []).start()
 
     def increment_epochs_processed(self):
         self.total_epochs_processed +=1
@@ -56,15 +44,13 @@ class MLTrainingJob():
 
     def increment_batches_processed(self):
         self.total_batches_processed +=1
-
         if self.total_batches_processed == self.warm_up_distance:
-            self.start_data_prep_service() 
+            self.data_prep_service.start()
 
-    def set_batches_to_process(self,group_id, batches:dict[str,Batch],bacth_group_priorityq:PriorityQueue):
+    def set_batches_to_process(self,group_id, batches:dict[str,Batch]):
         self.current_epoch_batches = batches
         self.epoch_batches_remaining=list(batches.keys())
         self.current_batch_group = group_id
-        self.bacth_group_priorityq = bacth_group_priorityq
 
     def set_avg_training_speed(self,speed):
         self.avg_training_speed = speed
@@ -75,21 +61,22 @@ class MLTrainingJob():
     def reset_dl_delay(self):
         self.data_laoding_delay = 0
     
+    def reset_epoch_timer(self):
+        self.epoch_timer = time.time()
+
     def end_job(self):
-        self.stop_data_prep_service()
+        self.data_prep_service.stop()
         self.job_finished_timestamp = datetime.datetime.now()
         self.active = False
         return self.job_started_timestamp, self.job_finished_timestamp
 
     def _next_batch(self,use_substitutional_hits):
-        
         isCached = False
         next_batch_id = self.epoch_batches_remaining[0]
         next_batch_indices = self.current_epoch_batches[next_batch_id].indices  
         if self.current_epoch_batches[next_batch_id].isCached:
             isCached = True
            # next_batch_indices = self.current_epoch_batches[next_batch_id].indices  
-
         if isCached == False and use_substitutional_hits:
             next_batch_id,next_batch_indices,isCached = self._find_substitute_batch(next_batch_id, next_batch_indices)
         

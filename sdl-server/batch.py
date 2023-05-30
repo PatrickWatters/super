@@ -1,4 +1,4 @@
-from misc.priority_queue import PriorityQueue
+from misc.unique_priority_queue import UniquePriorityQueue
 import numpy as np
 from collections import OrderedDict
 
@@ -17,7 +17,7 @@ class BatchGroup():
     def __init__(self,group_id, batches):
         self.group_id = group_id
         self.batches:dict = batches
-        self.priorityq = PriorityQueue()
+        self.priorityq = UniquePriorityQueue()
         self.processed_by =[]
         self.cached_batches = []
         self.isActive = True
