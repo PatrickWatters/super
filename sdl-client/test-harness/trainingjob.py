@@ -12,7 +12,7 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from client import CMSClient
 from sdl_dataset import SDLDataset
-
+import random
 class SDLSampler():
 
     def __init__(self,job_id, num_batches,sdl_client:CMSClient, ):        
@@ -128,12 +128,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
     end = time.time()
     for i, (images, target,batch_id, cache_hit) in enumerate(train_loader):
         if i % 4 == 0:
-            time.sleep(1.2) #delay data loading every 4 batches
+            time.sleep(random.uniform(1.0, 2.0)) #delay data loading every 4 batches
         # measure data loading time
         data_fetch_time.update(time.time() - end)
 
         processing_started = time.time()
-        time.sleep(5)
+        time.sleep(0.3)
         processing_time.update(time.time() - processing_started)
         client.record_training_stats(processing_time.avg,data_fetch_time.val)
 
