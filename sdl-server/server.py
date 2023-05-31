@@ -41,7 +41,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
             self.bucket_name = config["S3"]["bucket"]
             self.use_substitutional_hits = config.getboolean('SUPER','use_substitutional_hits')
             self.drop_last =  config.getboolean('SUPER','drop_last')
-            self.access_time_update_freq=int(config["SUPER"]["access_time_update_freq"])
+            self.access_time_update_freq=float(config["SUPER"]["access_time_update_freq"])
             self.use_random_sampling=config.getboolean('SUPER','use_random_sampling')
             self.look_ahead_distance =int(config["SUPER"]["look_ahead_distance"])
             self.warm_up_distance=int(config["SUPER"]["warm_up_distance"])

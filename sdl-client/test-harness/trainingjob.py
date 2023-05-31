@@ -127,13 +127,15 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
     model.train()
     end = time.time()
     for i, (images, target,batch_id, cache_hit) in enumerate(train_loader):
+        if i % 4 == 0:
+            time.sleep(1.2) #delay data loading every 4 batches
         # measure data loading time
         data_fetch_time.update(time.time() - end)
 
         processing_started = time.time()
-        time.sleep(2.25)
+        time.sleep(5)
         processing_time.update(time.time() - processing_started)
-        client.record_training_stats(processing_time.avg,data_fetch_time.sum)
+        client.record_training_stats(processing_time.avg,data_fetch_time.val)
 
         total_batch_time.update(time.time() - end)
         end = time.time()

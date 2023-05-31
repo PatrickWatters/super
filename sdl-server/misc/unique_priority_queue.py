@@ -18,21 +18,29 @@ class UniquePriorityQueue(Queue):
     def _put(self, item, heappush=heapq.heappush):
         item = list(item)
         priority, task = item
+        job_id, group_id, batch_id = task
         
-        if task in self.entry_finder:
-            previous_item = self.entry_finder[task]
+        if batch_id in self.entry_finder:
+            previous_item = self.entry_finder[batch_id]
+            previous_job_id = previous_item[1][0]
             previous_priority, _ = previous_item
-            if priority < previous_priority:
+
+            if priority > previous_priority and previous_job_id == job_id: #if same job  always update the access time!
+                previous_item[-1] = self.REMOVED
+                self.entry_finder[batch_id] = item
+                heappush(self.queue, item)
+
+            elif priority < previous_priority: #if a different job but a higher priorty access time - update!
                 # Remove previous item
                 previous_item[-1] = self.REMOVED
-                self.entry_finder[task] = item
+                self.entry_finder[batch_id] = item
                 heappush(self.queue, item)
             else:
                 # Do not add new item.
                 print('duplicate entry with lower prioirty so not added',item)
                 pass
         else:
-            self.entry_finder[task] = item
+            self.entry_finder[batch_id] = item
             heappush(self.queue, item)
     def _qsize(self, len=len):
         return len(self.entry_finder)
@@ -42,17 +50,10 @@ class UniquePriorityQueue(Queue):
             item = heappop(self.queue)
             _, task = item
             if task is not self.REMOVED:
-                del self.entry_finder[task]
+                job_id, group_id, batch_id = task
+                del self.entry_finder[batch_id]
                 return item
         raise KeyError('It should never happen: pop from an empty priority queue')
-
-
-
-q = UniquePriorityQueue()
-for i in range(0, 100):
-    q.put((np.Infinity,i))
-
-
 
 class ConsumerThread(threading.Thread):
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, verbose=None):
@@ -71,6 +72,15 @@ class ConsumerThread(threading.Thread):
     
 if __name__ == '__main__':
     consumers = []
+    q = UniquePriorityQueue()
+    COUNTER = 100
+    for i in range(0, 100):
+        COUNTER -=1
+    #self.global_priority_queue.put((predicted_access_time,(self.job_id,batch_id, self.current_batch_group)))
+    #q.put((np.Infinity,i))
+        q.put((COUNTER,(64,1,1)))
+
+    q.get()
 
     end = time.time()
     for i in range(8):
