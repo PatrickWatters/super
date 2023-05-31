@@ -26,16 +26,17 @@ class MLTrainingJob():
         self.epoch_batches_remaining = []
         self.global_priority_queue:UniquePriorityQueue = global_priority_queue
         self.active = True
+        self.warm_up = True
         self.data_prep_service = RepeatedTimer(self.access_time_update_freq ,self.run_data_prep_task)
 
     def run_data_prep_task(self):
         predicted_times ={}
         for idx in range(0,min(len(self.epoch_batches_remaining),self.look_ahead_distance)):
-            batch_id = self.epoch_batches_remaining[idx+1]
+            batch_id = self.epoch_batches_remaining[idx]
             #predicted_access_time = max(0,(((self.total_batches_processed+(idx-1)) * self.avg_training_speed) + self.data_laoding_delay) - (time.time() - self.epoch_timer)) #be careful with parentheness here!
             predicted_access_time = max(0,(((self.total_batches_processed+(idx-1)) * self.avg_training_speed) + self.data_laoding_delay) - (time.time() - self.epoch_timer)) #be careful with parentheness here!
 
-                        #predicted_access_time = max(0,((idx * self.avg_training_speed) + self.data_laoding_delay))
+            #predicted_access_time = max(0,((idx * self.avg_training_speed) + self.data_laoding_delay))
             #self.global_priority_queue.put((predicted_access_time,(self.job_id,self.current_batch_group,batch_id)))
             predicted_times[batch_id] = predicted_access_time
         logging.info((time.time() - self.epoch_timer,self.data_laoding_delay))
@@ -52,6 +53,7 @@ class MLTrainingJob():
         if self.total_batches_processed == self.warm_up_distance: 
             self.reset_epoch_timer()
             self.reset_dl_delay()
+            self.warm_up = False
             #self.data_prep_service.start()
 
     def set_batches_to_process(self,group_id, batches:dict[str,Batch]):
@@ -78,7 +80,7 @@ class MLTrainingJob():
         return self.job_started_timestamp, self.job_finished_timestamp
 
     def _next_batch(self,use_substitutional_hits):
-        self.run_data_prep_task()
+    
 
         isCached = False
         next_batch_id = self.epoch_batches_remaining[0]
@@ -94,6 +96,9 @@ class MLTrainingJob():
         self.current_epoch_batches[next_batch_id].isCached = True #remove this line later - only added to check that the shllow copy with batch group is working
         #if self.total_epochs_processed % self.look_ahead_distance == 0:
         #    self.reset_dl_delay()
+        if not self.warm_up:
+            self.run_data_prep_task()
+        
         return next_batch_id, next_batch_indices, isCached
     
     def _find_substitute_batch(self,next_batch_id, next_batch_indices):
