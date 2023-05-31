@@ -19,3 +19,12 @@ this i.e. find a way to prevent this from happening, and/or, find an elegent way
 I also need to start thinking about exceeding the size of the SION cache and what happens in that scenario. We can always sping more functions I guess at no extra cost (this is why Serverless is good - storage is basically free!),
 but what can I do to stop it if it does happen:
     - reduce the keep-alive-pings (remember SION has its own pint timeline which I could possibly disable)
+
+
+
+
+#Possible Improvements:
+- predict the delay before it happens based on whether it is a cache miss or not, this means tracking how long it takes
+to load a bacth on a cache miss overtime and using that value to predict the delay and update the queue! Additionally,
+we could handle cache misses within the service itself!
+
