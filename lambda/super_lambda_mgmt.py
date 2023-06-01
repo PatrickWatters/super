@@ -3,10 +3,10 @@ import base64
 import json
 import logging
 import boto3
-from custom_waiter import CustomWaiter,WaitState
-from lambda_basics import LambdaWrapper
-from retries import wait
-import question as q
+from deploy.custom_waiter import CustomWaiter,WaitState
+from deploy.lambda_basics import LambdaWrapper
+from deploy.retries import wait
+import deploy.question as q
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class UpdateFunctionWaiter(CustomWaiter):
 
 class SUPERLambdaMgmt(object):
 
-    def __init__(self, handler_code_file='../handlers/lambda_handler_dataload.py',lambda_name='lambda_dataloader', lambda_client=boto3.client('lambda'),iam_resource=boto3.resource('iam')):
+    def __init__(self, handler_code_file='lambda/handlers/lambda_handler_dataload.py',lambda_name='lambda_dataloader', lambda_client=boto3.client('lambda'),iam_resource=boto3.resource('iam')):
         self.lambda_client = lambda_client
         self.iam_resource =iam_resource
         self.handler_code_file =handler_code_file
@@ -47,6 +47,7 @@ class SUPERLambdaMgmt(object):
             print(f"...and creating the {self.lambda_name} Lambda function.")
             self.wrapper.create_function(
             self.lambda_name, f'{self.lambda_name}.lambda_handler', iam_role, deployment_package)
+            print(f"Function {self.lambda_name} created.")
         else:
             print(f"Function {self.lambda_name} already exists.")
     print('-'*88)
@@ -78,12 +79,22 @@ class SUPERLambdaMgmt(object):
             self.wrapper.delete_function(self.lambda_name)
             print(f"Deleted function {self.lambda_name}.")
     
+    def invoke_function(self,action_params, get_log =False):
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+        function = self.wrapper.get_function(self.lambda_name)
+        if function is None:
+            print(f"Function {self.lambda_name} doesn't exists.")
+        else:
+            print(f"Let's invoke {self.lambda_name}")
+            print(f"Invoking {self.lambda_name}...")
+            response = self.wrapper.invoke_function(self.lambda_name, action_params,get_log)
+            #print(f"Result:" f"{json.load(response['Payload'])}")  
+            return json.load(response['Payload'])
+        print('-'*88)
+
+    
 if __name__ == '__main__':
-    lambda_client =boto3.client('lambda')
-    iam_resource = boto3.resource('iam')
-    lambda_name = 'lambda_dataloader'
-    code_file =  'lambda/handlers/lambda_handler_dataload.py'
-    super_lambda = SUPERLambdaMgmt(handler_code_file=code_file)
-    super_lambda.deploy_function()
+    super_lambda = SUPERLambdaMgmt()
+    super_lambda.update_function()
     print('')
    

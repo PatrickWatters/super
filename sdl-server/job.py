@@ -38,7 +38,8 @@ class MLTrainingJob():
         predicted_times ={}
         for idx in range(0,min(len(self.currEpoch_remainingBatches),self.look_ahead_distance)):
             batch_id = self.currEpoch_remainingBatches[idx]
-            predicted_access_time = max(0,(((self.currEpoch_batchesProcessed+(idx-1)) * self.avg_training_speed) + self.data_laoding_delay) - (time.time() - self.currEpoch_timer)) #be careful with parentheness here!
+            predicted_access_time = max(0,(((self.currEpoch_batchesProcessed+(idx-1)) * self.avg_training_speed) 
+                                           + self.data_laoding_delay) - (time.time() - self.currEpoch_timer)) #be careful with parentheness here!
             predicted_times[batch_id] = predicted_access_time
         #logging.info((time.time() - self.currEpoch_timer,self.data_laoding_delay))
         #logging.info(predicted_times)
