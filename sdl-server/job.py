@@ -26,6 +26,7 @@ class MLTrainingJob():
         self.job_timer = None
         self.executor = ThreadPoolExecutor() # create a thread pool with the default number of worker threads
         #self.data_prep_service = RepeatedTimer(0.012,self.run_batch_access_time_prediction)
+        
         #epoch level attributes
         self.currEpoch_batchesProcessed = -1
         self.currEpoch_batchGroup = None
@@ -40,7 +41,7 @@ class MLTrainingJob():
             predicted_access_time = max(0,(((self.currEpoch_batchesProcessed+(idx-1)) * self.avg_training_speed) + self.data_laoding_delay) - (time.time() - self.currEpoch_timer)) #be careful with parentheness here!
             predicted_times[batch_id] = predicted_access_time
         #logging.info((time.time() - self.currEpoch_timer,self.data_laoding_delay))
-        logging.info(predicted_times)
+        #logging.info(predicted_times)
 
     def increment_epochs_processed(self):
         self.total_epochs_processed +=1
@@ -99,7 +100,7 @@ class MLTrainingJob():
 
         if self.warm_up_over:
             self.executor.submit(self.run_batch_access_time_prediction) # does not block
-            
+
         return next_batch_id, next_batch_indices, isCached
     
     def _find_substitute_batch(self,next_batch_id, next_batch_indices):
