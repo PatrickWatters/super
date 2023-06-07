@@ -13,7 +13,7 @@ class RedisClient:
             self.conn = redis.StrictRedis(host=endpoint, port=6379)
             self.exire_time = 10
         elif host == 'aws':
-            endpoint='example-001.xjfut6.0001.usw1.cache.amazonaws.com'
+            endpoint='redistest.rdior4.ng.0001.usw2.cache.amazonaws.com'
             self.conn = redis.StrictRedis(host=endpoint, port=6379)
         else:
             host = 'sion'
@@ -52,7 +52,7 @@ class RedisClient:
 if __name__ == "__main__":  
     parser = argparse.ArgumentParser()
     parser.add_argument('-flush', '--flush', default=False, type=bool, metavar='N', help='Empties the cache if TRUE')
-    parser.add_argument('-host', '--host', default='local', type=str,metavar='N')   
+    parser.add_argument('-host', '--host', default='aws', type=str,metavar='N')   
     args = parser.parse_args()
 
     if args.host == 'sion':

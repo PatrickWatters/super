@@ -17,7 +17,7 @@ def simple_invokation():
     action_params['cache_bacth'] = True
     action_params['return_batch_data'] = False
     action_params['bucket'] = 'sdl-cifar10'    
-    action_params['redis_host'] = 'arn:aws:elasticache:us-west-2:590178426343:replicationgroup:demo'    
+    action_params['redis_host'] = 'redistest.rdior4.ng.0001.usw2.cache.amazonaws.com'    
     action_params['redis_port'] = '6379'
 
     end = time.time()
