@@ -1,8 +1,4 @@
-from logging import error
-from PIL import Image
 import redis
-import io
-import time
 import argparse
 
 class RedisClient:
