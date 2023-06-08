@@ -10,6 +10,9 @@ import json
 from PIL import Image
 import logging
 import csv
+import threading
+from queue import Queue
+import copy
 
 def size_of_str(input_string, metric ='bytes'):
     res = len(input_string.encode('utf-8'))
@@ -118,45 +121,30 @@ def populate_cache_until_full(action_params,batch_size,outputfile, stop_after = 
                 filewriter.writerow([val[0],val[1],val[2],val[3]])
 
 
-def populate_cache_multithreaded(action_params,batch_size,outputfile, stop_after = None):
-    mgr = SUPERLambdaMgmt()
-    batch_metadata = gen_dummy_batch(batch_size)
-    action_params['batch_metadata'] = batch_metadata
-    tend = time.time()
-    counter =0
-    total_size = 0
-    result = []
-    while (True):
-        if stop_after is not None:
-            if counter == stop_after:
-                break
-        action_params['batch_id'] = counter+1
-        single_batch_time = time.time()
-        response = mgr.invoke_function(action_params, False)
-        if 'errorMessage' in response:
-            print(response['errorMessage'])
-            logging.info(response['errorMessage'])
-            break
-        if response['isCached'] == False:
-            break
-        else:
-            requesttime =time.time()-single_batch_time
-            if action_params['return_batch_data']:
-                total_size+=size_of_str(response['batch_data'],'mb')
-            else:
-                total_size+= 0.794189453125
-            counter +=1
-            total_size +=0.03134
-            result.append((action_params['batch_id'],total_size,requesttime,time.time()-tend))
-            logging.info((counter,total_size,requesttime,time.time()-tend))
+class ConsumerThread(threading.Thread):
+    def __init__(self, group=None, target=None,tend=None, name=None, args=(), kwargs=None, verbose=None):
+        super(ConsumerThread,self).__init__()
+        self.target = target
+        self.name = name
+        self.mgr = SUPERLambdaMgmt()
+        self.total_size =0
+        self.tend = tend
+        return
 
-    with open(outputfile, 'w') as f:
-        filewriter = csv.writer(f, delimiter='\t',  quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        filewriter.writerow(['BatchId','Total Cached (Mb)','Batch Load Time (s)', 'Elapsed Time (s)'])
-        for val in result:
-                filewriter.writerow([val[0],val[1],val[2],val[3]])
-
-
+    def run(self):
+        #while True:
+            while not q.empty():
+                action_params:dict = q.get()
+                batch_id = action_params['batch_id']
+                single_batch_time = time.time()
+                response = self.mgr.invoke_function(action_params, False)
+                requesttime =time.time()-single_batch_time
+                self.total_size +=size_of_str(response['batch_data'],'mb')
+                output = (action_params['batch_id'],self.total_size,requesttime,time.time()-self.tend)
+                outq.put(output)
+                logging.info((batch_id,self.total_size,requesttime,time.time()-self.tend))
+                #time.sleep(random.random())
+            return
 
 
 if __name__ == '__main__':
@@ -171,6 +159,38 @@ if __name__ == '__main__':
     action_params['redis_host'] = 'super-redis.rdior4.ng.0001.usw2.cache.amazonaws.com'    
     action_params['redis_port'] = 6379
     #simple_invokation(action_params,256)
+    # populate_cache_until_full(action_params,256,'cachet2micro_32_4096mb_ec2_with_data_transfer.csv',300)
 
-    populate_cache_until_full(action_params,256,'cachet2micro_32_4096mb_ec2_with_data_transfer.csv',300)
- 
+
+    #mulithreaded test
+    total_size = 0
+    consumers = []
+    outq = Queue()
+    q = Queue()
+    
+    batch_metadata = gen_dummy_batch(256)
+    action_params['batch_metadata'] = batch_metadata
+    
+    for i in range(0, 300):
+        dc = copy.deepcopy(action_params)
+        dc['batch_id'] = i+1
+        q.put(dc)
+
+    tend = time.time()
+    for i in range(8):
+        name = 'Consumer-{}'.format(i)
+        c = ConsumerThread(tend=tend, name=name)
+        c.start()
+        consumers.append(c)
+
+    for consumer in consumers:
+        consumer.join()
+
+    print('ended',time.time() - tend)
+
+    with open('cachet2micro_32_2048mb_ec2_with_data_transfer_multi_threaded8.csv', 'w') as f:
+        filewriter = csv.writer(f, delimiter='\t',  quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        filewriter.writerow(['BatchId','Total Cached (Mb)','Batch Load Time (s)', 'Elapsed Time (s)'])
+        while not outq.empty():
+            val = outq.get()
+            filewriter.writerow([val[0],val[1],val[2],val[3]])

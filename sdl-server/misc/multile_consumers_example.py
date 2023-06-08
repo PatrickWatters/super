@@ -26,7 +26,7 @@ if __name__ == '__main__':
        q.put(i)
 
     end = time.time()
-    for i in range(1):
+    for i in range(16):
         name = 'Consumer-{}'.format(i)
         c = ConsumerThread(name=name)
         c.start()
