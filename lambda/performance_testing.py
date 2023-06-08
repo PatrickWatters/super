@@ -80,7 +80,6 @@ def simple_invokation(action_params,batch_size):
     print(time.time() - end)
 
 def populate_cache_until_full(action_params,batch_size,outputfile, stop_after = None):
-
     mgr = SUPERLambdaMgmt()
     batch_metadata = gen_dummy_batch(batch_size)
     action_params['batch_metadata'] = batch_metadata
@@ -118,6 +117,48 @@ def populate_cache_until_full(action_params,batch_size,outputfile, stop_after = 
         for val in result:
                 filewriter.writerow([val[0],val[1],val[2],val[3]])
 
+
+def populate_cache_multithreaded(action_params,batch_size,outputfile, stop_after = None):
+    mgr = SUPERLambdaMgmt()
+    batch_metadata = gen_dummy_batch(batch_size)
+    action_params['batch_metadata'] = batch_metadata
+    tend = time.time()
+    counter =0
+    total_size = 0
+    result = []
+    while (True):
+        if stop_after is not None:
+            if counter == stop_after:
+                break
+        action_params['batch_id'] = counter+1
+        single_batch_time = time.time()
+        response = mgr.invoke_function(action_params, False)
+        if 'errorMessage' in response:
+            print(response['errorMessage'])
+            logging.info(response['errorMessage'])
+            break
+        if response['isCached'] == False:
+            break
+        else:
+            requesttime =time.time()-single_batch_time
+            if action_params['return_batch_data']:
+                total_size+=size_of_str(response['batch_data'],'mb')
+            else:
+                total_size+= 0.794189453125
+            counter +=1
+            total_size +=0.03134
+            result.append((action_params['batch_id'],total_size,requesttime,time.time()-tend))
+            logging.info((counter,total_size,requesttime,time.time()-tend))
+
+    with open(outputfile, 'w') as f:
+        filewriter = csv.writer(f, delimiter='\t',  quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        filewriter.writerow(['BatchId','Total Cached (Mb)','Batch Load Time (s)', 'Elapsed Time (s)'])
+        for val in result:
+                filewriter.writerow([val[0],val[1],val[2],val[3]])
+
+
+
+
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(message)s',filename='cache_load.log', encoding='utf-8', level=logging.INFO)
     batch_metadata = gen_dummy_batch(256)
@@ -131,5 +172,5 @@ if __name__ == '__main__':
     action_params['redis_port'] = 6379
     #simple_invokation(action_params,256)
 
-    populate_cache_until_full(action_params,256,'cachet2micro_32_2048mb_ec2_with_data_transfer.csv',300)
+    populate_cache_until_full(action_params,256,'cachet2micro_32_4096mb_ec2_with_data_transfer.csv',300)
  

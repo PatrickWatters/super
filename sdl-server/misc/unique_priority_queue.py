@@ -78,12 +78,10 @@ if __name__ == '__main__':
         COUNTER -=1
     #self.global_priority_queue.put((predicted_access_time,(self.job_id,batch_id, self.current_batch_group)))
     #q.put((np.Infinity,i))
-        q.put((COUNTER,(64,1,1)))
-
-    q.get()
+        q.put((i,(64,1,1)))
 
     end = time.time()
-    for i in range(8):
+    for i in range(1):
         name = 'Consumer-{}'.format(i)
         c = ConsumerThread(name=name)
         c.start()
