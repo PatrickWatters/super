@@ -80,17 +80,17 @@ class SUPERLambdaMgmt(object):
             print(f"Deleted function {self.lambda_name}.")
     
     def invoke_function(self,action_params, get_log =False):
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-        function = self.wrapper.get_function(self.lambda_name)
-        if function is None:
-            print(f"Function {self.lambda_name} doesn't exists.")
-        else:
-            print(f"Let's invoke {self.lambda_name}")
-            print(f"Invoking {self.lambda_name}...")
+        #logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+        #function = self.wrapper.get_function(self.lambda_name)
+        #if function is None:
+            #print(f"Function {self.lambda_name} doesn't exists.")
+        #else:
+            #print(f"Let's invoke {self.lambda_name}")
+            #print(f"Invoking {self.lambda_name}...")
             response = self.wrapper.invoke_function(self.lambda_name, action_params,get_log)
             #print(f"Result:" f"{json.load(response['Payload'])}")  
             return json.load(response['Payload'])
-        print('-'*88)
+        #print('-'*88)
 
     
 if __name__ == '__main__':

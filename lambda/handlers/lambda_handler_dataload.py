@@ -11,7 +11,7 @@ from boto3.s3.transfer import TransferConfig
 
 # ===================================== Setings ==================================================================
 s3 = boto3.client('s3')
-redis_cleint = None
+redis_client = None
 GB = 1024 ** 3
 config = TransferConfig(use_threads=True,max_concurrency=10,multipart_threshold=5*GB) # To consume less downstream bandwidth, decrease the maximum concurrency
 # ===================================== Setings ==================================================================
@@ -26,21 +26,24 @@ def lambda_handler(event, context):
     cache_bacth= event['cache_bacth'] 
     return_batch_data= event['return_batch_data'] 
     bucket_name=event['bucket']
-    if cache_bacth and redis_cleint is None:
-        redis_cleint = redis.StrictRedis(host=event['redis_host'], port=event['redis_port'])
 
-    #maybe do some check to check Redis is working... 
+    if cache_bacth:
+        redis_client = redis.StrictRedis(host=event['redis_host'], port=event['redis_port'])
     try:
+        #maybe do some check to check Redis is working... 
+        #return {'batch_id': redis_client.dbsize(),'isCached': redis_client.dbsize()}
         samples = []
         for key, result in fetch_data_from_s3(bucket_name=bucket_name,batch_metadata=batch_metadata,func_name=load_img_as_base64):
             samples.append(result)
         json_samples = json.dumps(samples) 
         isCached = False
+
         if cache_bacth:      
             try:
-                redis_cleint.set(batch_id, json_samples)
+                redis_client.set(batch_id, json_samples)
                 isCached = True
-            except Exception as e:      
+            except Exception as e:
+                isCached = False      
                 logger.error(e, exc_info=True)
 
         if not isCached or return_batch_data:
@@ -72,9 +75,10 @@ def load_img_as_base64(bacth_item, s3_bucket):
         base_64_encoded_img = base64.b64encode(f.getvalue()).decode('utf-8')
     return base_64_encoded_img, label
 
-'''
 
+'''
 if __name__ == "__main__":
+    import random
     #create some dummy data
     batch_metadata = []
     for i in range(0,10):
@@ -82,12 +86,12 @@ if __name__ == "__main__":
     #set configs for the command
     action_params = {}
     action_params['batch_metadata'] = batch_metadata
-    action_params['batch_id'] = 123456789
+    action_params['batch_id'] = random.randint(0,10000000000)
     action_params['cache_bacth'] = True
     action_params['return_batch_data'] = False
     action_params['bucket'] = 'sdl-cifar10'    
     action_params['redis_host'] = '127.0.0.1'    
-    action_params['redis_port'] = '6379'
+    action_params['redis_port'] = 6379
 
     #call function
     response_message = lambda_handler(action_params, None)
