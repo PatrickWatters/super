@@ -13,7 +13,11 @@ import csv
 import threading
 from queue import Queue
 import copy
+import botocore
 
+client_config = botocore.config.Config(
+    max_pool_connections=25,
+)
 total_size = 0
 
 def size_of_str(input_string, metric ='bytes'):
@@ -159,11 +163,10 @@ if __name__ == '__main__':
     action_params['cache_bacth'] = True
     action_params['return_batch_data'] = True
     action_params['bucket'] = 'sdl-cifar10'    
-    action_params['redis_host'] = 'super-redis.rdior4.ng.0001.usw2.cache.amazonaws.com'    
-    action_params['redis_port'] = 6379
+    action_params['redis_host'] = '35.163.39.6'    
+    action_params['redis_port'] = 6378
     #simple_invokation(action_params,256)
-    # populate_cache_until_full(action_params,256,'cachet2micro_32_4096mb_ec2_with_data_transfer.csv',300)
-
+    #populate_cache_until_full(action_params,256,'sion_32_1024mb_laptop_with_data_transfer.csv',300)
 
     #mulithreaded test
     total_size = 0
@@ -180,7 +183,7 @@ if __name__ == '__main__':
         q.put(dc)
 
     tend = time.time()
-    for i in range(16):
+    for i in range(32):
         name = 'Consumer-{}'.format(i)
         c = ConsumerThread(tend=tend, name=name)
         c.start()
@@ -191,7 +194,7 @@ if __name__ == '__main__':
 
     print('ended',time.time() - tend)
 
-    with open('cachet2micro_32_2048mb_ec2_with_data_transfer_multi_threaded16.csv', 'w') as f:
+    with open('sion_32_2048mb_ec2_with_data_transfer_multi_threaded32.csv', 'w') as f:
         filewriter = csv.writer(f, delimiter='\t',  quotechar='|', quoting=csv.QUOTE_MINIMAL)
         filewriter.writerow(['BatchId','Total Cached (Mb)','Batch Load Time (s)', 'Elapsed Time (s)'])
         while not outq.empty():
