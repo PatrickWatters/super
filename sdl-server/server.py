@@ -44,6 +44,10 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
             self.random_sampling_enabled=config.getboolean('SUPER','use_random_sampling')
             self.look_ahead_distance =int(config["SUPER"]["look_ahead_distance"])
             self.warm_up_distance=int(config["SUPER"]["warm_up_distance"])
+            self.redis_port=int(config["SION"]["port"])
+            self.redis_host=(config["SION"]["host"])
+            self.lambda_func_name=config["SUPER"]["lambda_func_name"]
+
             return config
         else:
             print(f'Unable to read config')
@@ -55,7 +59,8 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
             print(f'The bucket {self.bucket_name} does not exist or you have no access.')
             return
         #load training dataset S3 bucket
-        self.train_dataset = Dataset(self.bucket_name,'train',self.micro_batch_size, drop_last=self.drop_last)
+        self.train_dataset = Dataset(self.bucket_name,'train',self.micro_batch_size, drop_last=self.drop_last, redis_port=self.redis_port,
+                                     redis_host= self.redis_host, lambda_func_name= self.lambda_func_name)
         print(f'Successfully loaded dataset from "{self.bucket_name}/train". Total files:{self.train_dataset.length}')
 
     def _gen_new_group_of_batches(self):
@@ -94,6 +99,10 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
             training_job.reset_dl_delay()
 
         next_batch_id, next_batch_indices, isCached = training_job._next_batch(self.use_substitutional_hits)
+        
+        if not isCached:
+            batch_data = self.train_dataset.fe
+        
         result = {'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_indices), 'isCached': isCached}
         logging.info(result)
 

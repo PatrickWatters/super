@@ -4,12 +4,12 @@ import json
 import boto3
 from torch.utils.data.sampler import RandomSampler,BatchSampler, SequentialSampler
 from batch import Batch, BatchGroup
-
+from lambda_wrapper import LambdaWrapper
 s3_client = boto3.client('s3')
 s3Resource = boto3.resource("s3")
 
 class Dataset():
-    def __init__(self,s3_bucket_name,prefix, batch_size, drop_last):
+    def __init__(self,s3_bucket_name,prefix, batch_size, drop_last, redis_port, redis_host, lambda_func_name='lambda_dataloader'):
         self.bucket_name = s3_bucket_name
         self.batch_size = batch_size
         self.drop_last =drop_last
@@ -17,6 +17,11 @@ class Dataset():
         self.IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG','.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',]
         self._blob_classes = self._classify_blobs()
         self.length = sum(len(class_items) for class_items in self._blob_classes.values())
+        self.redis_port =redis_port
+        self.redis_host =redis_host
+        self.lambda_func_name = lambda_func_name
+        self.lambda_wrapper = LambdaWrapper()
+    
 
     def is_image_file(self, filename):
         return any(filename.endswith(extension) for extension in self.IMG_EXTENSIONS)
@@ -84,5 +89,21 @@ class Dataset():
                 batch_id = abs(hash(frozenset(batch_indiceis)))
                 setOfbatches[batch_id] = Batch(id=batch_id,group_id=seed, indices=batch_indiceis)
         return setOfbatches
-
     
+    def fetch_bacth_data(self, batch_id, batch_metadata,cache_after_retrevial=False):
+            
+        fun_params = {}
+        fun_params['batch_metadata'] = batch_metadata
+        fun_params['batch_id'] = batch_id
+        fun_params['cache_bacth'] = cache_after_retrevial
+        fun_params['return_batch_data'] = False
+        fun_params['bucket'] = self.bucket_name
+        fun_params['redis_host'] = self.redis_host 
+        fun_params['redis_port'] = self.redis_port
+
+        response = self.lambda_wrapper.invoke_function(self.lambda_func_name,fun_params)
+
+        if 'errorMessage' in response:
+            print(response['errorMessage'])
+        else:
+           return response['batch_data']    

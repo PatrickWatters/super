@@ -97,12 +97,13 @@ class MLTrainingJob():
         
         self.currEpoch_remainingBatches.remove(next_batch_id)
 
-        self.currEpoch_batches[next_batch_id].isCached = True #remove this line later - only added to check that the shllow copy with batch group is working
+        #self.currEpoch_batches[next_batch_id].isCached = True #remove this line later - only added to check that the shllow copy with batch group is working
 
         if self.warm_up_over:
             self.executor.submit(self.run_batch_access_time_prediction) # does not block
 
         return next_batch_id, next_batch_indices, isCached
+    
     
     def _find_substitute_batch(self,next_batch_id, next_batch_indices):
         return next_batch_id, next_batch_indices, False
