@@ -89,6 +89,9 @@ def populate_cache_until_full(action_params,batch_size,outputfile, stop_after = 
     total_size = 0
     result = []
     while (True):
+        if stop_after is not None:
+            if counter == stop_after:
+                break
         action_params['batch_id'] = counter+1
         single_batch_time = time.time()
         response = mgr.invoke_function(action_params, False)
@@ -108,12 +111,7 @@ def populate_cache_until_full(action_params,batch_size,outputfile, stop_after = 
             total_size +=0.03134
             result.append((action_params['batch_id'],total_size,requesttime,time.time()-tend))
             logging.info((counter,total_size,requesttime,time.time()-tend))
-        
-        if stop_after is not None:
-            if counter == stop_after:
-                break
 
-  
     with open(outputfile, 'w') as f:
         filewriter = csv.writer(f, delimiter='\t',  quotechar='|', quoting=csv.QUOTE_MINIMAL)
         filewriter.writerow(['BatchId','Total Cached (Mb)','Batch Load Time (s)', 'Elapsed Time (s)'])
