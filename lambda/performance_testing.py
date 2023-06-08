@@ -173,7 +173,7 @@ if __name__ == '__main__':
     action_params['bucket'] = 'sdl-cifar10'    
     action_params['redis_host'] = '35.163.39.6'    
     action_params['redis_port'] = 6378
-    #simple_invokation(action_params,256)
+    simple_invokation(action_params,256)
     populate_cache_until_full(action_params,256,'sion_32_1024mb_laptop_with_no_data_transfer.csv',150)
     
     '''
