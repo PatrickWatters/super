@@ -168,7 +168,7 @@ if __name__ == '__main__':
     outq = Queue()
     q = Queue()
     
-    batch_metadata = gen_dummy_batch(256)
+    batch_metadata = gen_dummy_batch(16)
     action_params['batch_metadata'] = batch_metadata
     
     for i in range(0, 300):
@@ -177,7 +177,7 @@ if __name__ == '__main__':
         q.put(dc)
 
     tend = time.time()
-    for i in range(32):
+    for i in range(24):
         name = 'Consumer-{}'.format(i)
         c = ConsumerThread(tend=tend, name=name)
         c.start()
@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
     print('ended',time.time() - tend)
 
-    with open('cachet2micro_32_2048mb_ec2_with_data_transfer_multi_threaded32.csv', 'w') as f:
+    with open('cachet2micro_32_2048mb_ec2_with_data_transfer_multi_threaded24.csv', 'w') as f:
         filewriter = csv.writer(f, delimiter='\t',  quotechar='|', quoting=csv.QUOTE_MINIMAL)
         filewriter.writerow(['BatchId','Total Cached (Mb)','Batch Load Time (s)', 'Elapsed Time (s)'])
         while not outq.empty():
