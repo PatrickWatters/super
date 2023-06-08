@@ -3,7 +3,7 @@ import numpy as np
 from collections import OrderedDict
 
 class Batch():
-    def __init__(self,id, group_id,indices):
+    def __init__(self,id, group_id,indices,labelled_paths):
         self.batch_id = id
         self.indices = indices
         self.last_pinged_timestamp = None
@@ -11,6 +11,7 @@ class Batch():
         self.isCached = False
         self.isActive = True
         self.group_id = group_id
+        self.labelled_paths = []
         self.size = len(self.indices)
 
 class BatchGroup():

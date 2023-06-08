@@ -26,7 +26,7 @@ class LambdaWrapper:
                 FunctionName=function_name,
                 Payload=json.dumps(function_params),
                 LogType='Tail' if get_log else 'None')
-            logger.info("Invoked function %s.", function_name)
+            #logger.info("Invoked function %s.", function_name)
         except ClientError:
             logger.exception("Couldn't invoke function %s.", function_name)
             raise

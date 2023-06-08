@@ -50,7 +50,7 @@ class CMSClient(object):
         """
         messageRequest = pb2.GetNextBatchForJobMessage(job_id=job_id,avg_training_speed =self.job_avg_training_speed, prev_batch_dl_delay = self.prev_batch_dl_delay)
         response = self.stub.GetNextBatchForJob(messageRequest)
-        return  (response.batch_id, json.loads(response.batch_metadata), response.isCached)
+        return  (response.batch_id, json.loads(response.batch_metadata), response.isCached, response.batch_data)
     
     def get_url(self, message):
         """

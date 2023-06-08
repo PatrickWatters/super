@@ -54,6 +54,9 @@ class UniquePriorityQueue(Queue):
                 del self.entry_finder[batch_id]
                 return item
         raise KeyError('It should never happen: pop from an empty priority queue')
+    
+
+
 
 class ConsumerThread(threading.Thread):
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, verbose=None):

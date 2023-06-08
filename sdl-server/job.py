@@ -41,6 +41,7 @@ class MLTrainingJob():
             predicted_access_time = max(0,(((self.currEpoch_batchesProcessed+(idx-1)) * self.avg_training_speed) 
                                            + self.data_laoding_delay) - (time.time() - self.currEpoch_timer)) #be careful with parentheness here!
             predicted_times[batch_id] = predicted_access_time
+            self.global_priority_queue.put((predicted_access_time,(self.job_id, self.currEpoch_batchGroup, batch_id)))
         #logging.info((time.time() - self.currEpoch_timer,self.data_laoding_delay))
         #logging.info(predicted_times)
 
@@ -89,6 +90,7 @@ class MLTrainingJob():
         isCached = False
         next_batch_id = self.currEpoch_remainingBatches[0]
         next_batch_indices = self.currEpoch_batches[next_batch_id].indices  
+        
         if self.currEpoch_batches[next_batch_id].isCached:
             isCached = True
 

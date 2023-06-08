@@ -8,6 +8,8 @@ from torch.utils.data import Dataset
 from redis_client import RedisClient
 import io
 from client import CMSClient
+import base64
+import time
 redis_client = RedisClient('local')
 
 class SDLDataset(Dataset):
@@ -33,6 +35,42 @@ class SDLDataset(Dataset):
         batch_id = input[0]
         batch_indices = input[1]
         isCached = input[2]
+        batch_data = input[3]
+
+        if isCached:
+            batch_data = redis_client.get_data(batch_id)
+            cache_hit = True
+        else:
+            cache_hit = False
+            end = time.time()
+            torch_imgs, torch_lables = self.convert_json_batch_to_torch_format(batch_data)
+            prep_time = time.time() - end
+        return torch_imgs, torch_lables, batch_id, isCached, prep_time
+
+    def convert_json_batch_to_torch_format(self,batch_data):
+        samples = json.loads(batch_data)
+        imgs = []
+        labels  =[]
+        
+        for img,label in samples:
+            img = Image.open(io.BytesIO(base64.b64decode(img)))
+            if self.transform is not None:
+                img = self.transform(img)
+            if self.target_transform is not None:
+                label = self.target_transform(label)
+
+            imgs.append(img)
+            labels.append(label)
+
+        return torch.stack(imgs), torch.tensor(labels)
+
+'''
+def __getitem__(self, input):
+        batch_id = input[0]
+        batch_indices = input[1]
+        isCached = input[2]
+        data = input[3]
+
         batch_data = redis_client.get_data(batch_id)
         if batch_data != None:
             cache_hit = True
@@ -41,3 +79,4 @@ class SDLDataset(Dataset):
             return batch_with_labels_dict['inputs'],batch_with_labels_dict['labels'], batch_id,cache_hit
         else:
             return None, None, batch_id, isCached
+'''

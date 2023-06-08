@@ -87,23 +87,30 @@ class Dataset():
         batch_sampler = BatchSampler(base_sampler, batch_size=self.batch_size, drop_last=False)
         for i,batch_indiceis in enumerate(batch_sampler):
                 batch_id = abs(hash(frozenset(batch_indiceis)))
-                setOfbatches[batch_id] = Batch(id=batch_id,group_id=seed, indices=batch_indiceis)
+                labelled_paths =[]
+                for id in batch_indiceis:
+                    labelled_paths.append(self._classed_items[id])
+                setOfbatches[batch_id] = Batch(id=batch_id,group_id=seed, indices=batch_indiceis,labelled_paths=labelled_paths)
         return setOfbatches
     
-    def fetch_bacth_data(self, batch_id, batch_metadata,cache_after_retrevial=False):
-            
+    def fetch_bacth_data(self, batch_id, batch_indices,cache_after_retrevial=False):
+        
+        batch_metadata =[]
+        for id in batch_indices:
+            batch_metadata.append(self._classed_items[id])
+
         fun_params = {}
         fun_params['batch_metadata'] = batch_metadata
         fun_params['batch_id'] = batch_id
         fun_params['cache_bacth'] = cache_after_retrevial
-        fun_params['return_batch_data'] = False
+        fun_params['return_batch_data'] = True
         fun_params['bucket'] = self.bucket_name
         fun_params['redis_host'] = self.redis_host 
         fun_params['redis_port'] = self.redis_port
 
         response = self.lambda_wrapper.invoke_function(self.lambda_func_name,fun_params)
-
-        if 'errorMessage' in response:
-            print(response['errorMessage'])
+        paylaod = json.load(response['Payload'])
+        if 'errorMessage' in paylaod:
+            print(paylaod['errorMessage'])
         else:
-           return response['batch_data']    
+           return paylaod['batch_data']    

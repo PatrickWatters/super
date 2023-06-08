@@ -37,6 +37,8 @@ message GetNextBatchForJobResponse{
   string batch_id = 1;
   string batch_metadata = 2;
   bool isCached = 3;
+  string batch_data = 4;
+
  }
 //Outgoing responses
 message RegisterTrainingJobResponse{

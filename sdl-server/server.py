@@ -13,6 +13,9 @@ import json
 from batch import BatchGroup
 from misc.unique_priority_queue import UniquePriorityQueue
 import time
+import threading
+from batch import Batch
+from lambda_wrapper import LambdaWrapper
 
 logging.basicConfig(format='%(asctime)s - %(message)s',filename='server.log', encoding='utf-8', level=logging.INFO)
 
@@ -27,6 +30,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self._read_config()
         self._check_environment()
         self._gen_new_group_of_batches() #create an initial set of batches
+        #self.start_consuming()
         pass
 
     def _read_config(self):
@@ -99,12 +103,12 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
             training_job.reset_dl_delay()
 
         next_batch_id, next_batch_indices, isCached = training_job._next_batch(self.use_substitutional_hits)
-        
+        batch_data = None
         if not isCached:
-            batch_data = self.train_dataset.fe
+            batch_data = self.train_dataset.fetch_bacth_data(next_batch_id,next_batch_indices,False)
         
-        result = {'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_indices), 'isCached': isCached}
-        logging.info(result)
+        result = {'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_indices), 'isCached': isCached,'batch_data': batch_data}
+        logging.info({'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_indices), 'isCached': isCached})
 
         return pb2.GetNextBatchForJobResponse(**result)
     
@@ -135,6 +139,53 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         result = f'Hello I am up and running received "{message}" message from you'
         result = {'message': result, 'received': True}
         return pb2.MessageResponse(**result)
+    
+    def start_consuming(self):
+        consumers = []
+        for i in range(1):
+            name = 'Consumer-{}'.format(i)
+            c = ConsumerThread(name=name, bucket_name=self.bucket_name, redis_host=self.redis_host, redis_port=self.redis_port, queue=self.global_queue, batch_groups=self.batch_groups)
+            c.start()
+            consumers.append(c)
+
+        for consumer in consumers:
+            consumer.join()
+    
+class ConsumerThread(threading.Thread):
+    def __init__(self, name, bucket_name,redis_host,redis_port,queue,batch_groups, group=None, target=None, args=(), kwargs=None, verbose=None):
+        super(ConsumerThread,self).__init__()
+        self.q:UniquePriorityQueue = queue
+        self.batch_groups=batch_groups
+        self.target = target
+        self.name = name
+        self.lambda_wrapper = LambdaWrapper()
+        self.bucket_name = bucket_name
+        self.redis_host = redis_host
+        self.redis_port = redis_port
+        return
+    
+    def run(self):
+        while True:
+            item = self.q.get()
+            #decide what to do next..
+            item = list(item)
+            priority, task = item
+            job_id, group_id, batch_id = task
+            batch_in_question:Batch = self.batch_groups[group_id][batch_id]
+                
+            if not batch_in_question.isCached:
+                print(self.name + ' getting ' + str(item)  + ' : ' + str(self.q.qsize()) + ' items in queue')
+
+                fun_params = {}
+                fun_params['batch_metadata'] = batch_in_question.labelled_paths
+                fun_params['batch_id'] = batch_in_question.batch_id
+                fun_params['cache_bacth'] = True
+                fun_params['return_batch_data'] = False
+                fun_params['bucket'] = self.bucket_name
+                fun_params['redis_host'] = self.redis_host 
+                fun_params['redis_port'] = self.redis_port
+                self.lambda_wrapper.invoke_function()
+                batch_in_question.isCached = True
 
 
 def serve():

@@ -112,7 +112,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
     total_cache_misses = 0
     total_files = 0
     total_batch_time = AverageMeter("TotalTime", ":6.3f")
-    data_prep_time = AverageMeter("Prep", ":6.3f")
     data_fetch_time = AverageMeter("Fetch", ":6.3f")
     transfer_to_gpu_time = AverageMeter("Transfer", ":6.3f")
     processing_time = AverageMeter('Process', ':6.3f')
@@ -121,18 +120,30 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
     top5 = AverageMeter("Acc@5", ":6.2f")
     round_by_points = 3
     progress = ProgressMeter(
-        len(train_loader), [total_batch_time, data_fetch_time,data_prep_time, transfer_to_gpu_time,processing_time], prefix="Epoch: [{}]".format(epoch)
+        len(train_loader), [total_batch_time, data_fetch_time,transfer_to_gpu_time,processing_time, losses, top1, top5], prefix="Epoch: [{}]".format(epoch)
     )
 
     # switch to train mode
     model.train()
     end = time.time()
-
-    for i, (images, labels,batch_id, cache_hit, prep_time) in enumerate(train_loader):
-
+    for i, (images, labels,batch_id, cache_hit) in enumerate(train_loader):
+        #if i % 4 == 0:
+        #    time.sleep(random.uniform(1.0, 5.0)) #delay data loading every 4 batches
         # measure data loading time
         data_fetch_time.update(time.time() - end)
-        data_prep_time.update(prep_time)
+
+        processing_started = time.time()
+        time.sleep(0.012)
+        processing_time.update(time.time() - processing_started)
+        client.record_training_stats(processing_time.avg,data_fetch_time.val)
+
+        total_batch_time.update(time.time() - end)
+        end = time.time()
+    '''
+    for i, (images, target,batch_id, cache_hit) in enumerate(train_loader):
+        
+        # measure data loading time
+        data_fetch_time.update(time.time() - end)
         total_files += len(images)
 
         if cache_hit:
@@ -149,11 +160,11 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
         #measure time to process batch on device
         processing_started = time.time()
         #time.sleep(args.training_speed)
-
+     
         output = model(images)
-        loss = criterion(output, labels)
+        loss = criterion(output, target)
         # measure accuracy and record loss
-        acc1, acc5 = accuracy(output, labels, topk=(1, 5))
+        acc1, acc5 = accuracy(output, target, topk=(1, 5))
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
         top5.update(acc5[0], images.size(0))
@@ -167,11 +178,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
 
         # measure elapsed time
         total_batch_time.update(time.time() - end)
-
-        if i % args.print_freq == 0:
-            progress.display(i + 1)
-        
-        end = time.time()
+    '''
 class AverageMeter(object):
     """Computes and stores the average and current value."""
     def __init__(self, name, fmt=":f"):
