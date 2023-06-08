@@ -1,3 +1,8 @@
+try: 
+    import unzip_requirements
+except ImportError:
+    pass
+
 import boto3
 import io
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -28,7 +33,7 @@ def lambda_handler(event, context):
     cache_bacth= event['cache_bacth'] 
     return_batch_data= event['return_batch_data'] 
     bucket_name=event['bucket']
-
+    cache_error_message=''
     if cache_bacth:
         redis_client = redis.StrictRedis(host=event['redis_host'], port=event['redis_port'])
     try:
@@ -36,7 +41,7 @@ def lambda_handler(event, context):
         #return {'batch_id': redis_client.dbsize(),'isCached': redis_client.dbsize()}
         imgs =[]
         labels =[]
-        for key, result in fetch_data_from_s3(bucket_name=bucket_name,batch_metadata=batch_metadata,func_name=load_img_as_base64):
+        for key, result in fetch_data_from_s3(bucket_name=bucket_name,batch_metadata=batch_metadata,func_name=load_img_as_tensor):
             imgs.append(result[0])
             labels.append(result[1])
         with io.BytesIO() as f:
@@ -48,17 +53,20 @@ def lambda_handler(event, context):
                 redis_client.set(batch_id, base_64_encoded_batch)
                 isCached = True
             except Exception as e:
-                isCached = False      
+                isCached = False
+                cache_error_message = str(e)  
                 logger.error(e, exc_info=True)
 
+
         if not isCached or return_batch_data:
-                return {'batch_id': batch_id,'isCached': isCached,'batch_data':base_64_encoded_batch}
+                return {'batch_id': batch_id,'isCached': isCached,'batch_data':base_64_encoded_batch,'cache_error_message':cache_error_message}
         else:
-            return {'batch_id': batch_id,'isCached': isCached}
+            return {'batch_id': batch_id,'isCached': isCached,'cache_error_message':cache_error_message}
         
     except Exception as e:  # Catch all for easier error tracing in logs
         logger.error(e, exc_info=True)
-        raise Exception('Error occurred during execution')  # notify aws of failure
+        emesage = 'Error occurred during execution:' + str(e)
+        raise Exception(emesage)  # notify aws of failure
 
 
 def fetch_data_from_s3(bucket_name,batch_metadata,func_name):

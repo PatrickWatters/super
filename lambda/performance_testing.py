@@ -2,11 +2,11 @@
 from super_lambda_mgmt import SUPERLambdaMgmt
 import random
 import time
-#import torch
+import torch
 import base64
 import io
 import json
-#import torchvision.transforms as transforms
+import torchvision.transforms as transforms
 from PIL import Image
 import logging
 import csv
@@ -16,7 +16,7 @@ import copy
 import botocore
 
 client_config = botocore.config.Config(
-    max_pool_connections=25,
+    max_pool_connections=64,
 )
 total_size = 0
 
@@ -40,9 +40,15 @@ def size_of_tensor_in_bytes(encoding, metric ='bytes'):
  
 
 def process_response(batch_data:str):
-    samples = json.loads(batch_data)
-    tensor_imgs = []
-    labels  =[]
+    batch_data = base64.b64decode(batch_data)
+    buffer = io.BytesIO(batch_data)
+    decoded_batch = torch.load(buffer)
+    batch_imgs = decoded_batch['inputs']
+    batch_labels = decoded_batch['labels']
+    
+    #samples = json.loads(batch_data)
+    #tensor_imgs = []
+    #labels  =[]
     #convert_tensor = transforms.ToTensor()
     
     #for img,label in samples:
@@ -50,11 +56,11 @@ def process_response(batch_data:str):
     #        tensor_imgs.append(convert_tensor(pil_img))
     #        labels.append(label)
 
-    #batch_imgs = torch.stack(tensor_imgs)
-    #batch_labels = torch.tensor(labels)
+    #batch_imgs = torch.stack(batch_imgs)
+    #batch_labels = torch.tensor(batch_labels)
 
-    #print(size_of_tensor_in_bytes(batch_imgs,'mb'))
-    #print(size_of_tensor_in_bytes(batch_labels,'mb'))
+    print(size_of_tensor_in_bytes(batch_imgs,'mb'))
+    print(size_of_tensor_in_bytes(batch_labels,'mb'))
 
 
 
@@ -65,7 +71,7 @@ def gen_dummy_batch(batch_size=256):
     return batch_metadata
 
 def simple_invokation(action_params,batch_size):
-    mgr = SUPERLambdaMgmt()
+    mgr = SUPERLambdaMgmt(handler_code_file='/Users/patrickwatters/Projects/super/lambda/handlers/lambda_handler_torch_dataload.py',lambda_name='lambda_dataloader_pytorch')
     print(action_params['batch_id'])
     batch_metadata = gen_dummy_batch(batch_size)
     action_params['batch_metadata'] = batch_metadata
@@ -77,7 +83,7 @@ def simple_invokation(action_params,batch_size):
     if 'errorMessage' in response:
         print(response['errorMessage'])
         logging.info(response['errorMessage'])
-    if response['isCached'] == False:
+    elif response['isCached'] == False:
         print('Batch Size (bytes):', size_of_str(response['batch_data']))
         print('Response Size (MB):', size_of_str(response['batch_data'],'mb'))
     else:
@@ -89,7 +95,7 @@ def simple_invokation(action_params,batch_size):
     print(time.time() - end)
 
 def populate_cache_until_full(action_params,batch_size,outputfile, stop_after = None):
-    mgr = SUPERLambdaMgmt()
+    mgr = SUPERLambdaMgmt(handler_code_file='/Users/patrickwatters/Projects/super/lambda/handlers/lambda_handler_torch_dataload.py',lambda_name='lambda_dataloader_pytorch')
     batch_metadata = gen_dummy_batch(batch_size)
     action_params['batch_metadata'] = batch_metadata
     tend = time.time()
@@ -108,15 +114,17 @@ def populate_cache_until_full(action_params,batch_size,outputfile, stop_after = 
             logging.info(response['errorMessage'])
             break
         if response['isCached'] == False:
+            print('cache error:' + response['cache_error_message'])
             break
         else:
             requesttime =time.time()-single_batch_time
             if action_params['return_batch_data']:
                 total_size+=size_of_str(response['batch_data'],'mb')
             else:
-                total_size+= 0.794189453125
+                #total_size+= 0.794189453125
+                total_size+= 4.00321197509765
             counter +=1
-            total_size +=0.03134
+            #total_size +=0.03134
             result.append((action_params['batch_id'],total_size,requesttime,time.time()-tend))
             logging.info((counter,total_size,requesttime,time.time()-tend))
 
@@ -132,7 +140,7 @@ class ConsumerThread(threading.Thread):
         super(ConsumerThread,self).__init__()
         self.target = target
         self.name = name
-        self.mgr = SUPERLambdaMgmt()
+        self.mgr = SUPERLambdaMgmt(handler_code_file='/Users/patrickwatters/Projects/super/lambda/handlers/lambda_handler_torch_dataload.py',lambda_name='lambda_dataloader_pytorch')
         self.total_size =0
         self.tend = tend
         return
@@ -161,13 +169,14 @@ if __name__ == '__main__':
     action_params['batch_metadata'] = batch_metadata
     action_params['batch_id'] = random.randint(0,10000000000)
     action_params['cache_bacth'] = True
-    action_params['return_batch_data'] = True
+    action_params['return_batch_data'] = False
     action_params['bucket'] = 'sdl-cifar10'    
     action_params['redis_host'] = '35.163.39.6'    
     action_params['redis_port'] = 6378
     #simple_invokation(action_params,256)
-    #populate_cache_until_full(action_params,256,'sion_32_1024mb_laptop_with_data_transfer.csv',300)
-
+    populate_cache_until_full(action_params,256,'sion_32_1024mb_laptop_with_no_data_transfer.csv',150)
+    
+    '''
     #mulithreaded test
     total_size = 0
     consumers = []
@@ -177,13 +186,13 @@ if __name__ == '__main__':
     batch_metadata = gen_dummy_batch(256)
     action_params['batch_metadata'] = batch_metadata
     
-    for i in range(0, 300):
+    for i in range(300, 600):
         dc = copy.deepcopy(action_params)
         dc['batch_id'] = i+1
         q.put(dc)
 
     tend = time.time()
-    for i in range(32):
+    for i in range(64):
         name = 'Consumer-{}'.format(i)
         c = ConsumerThread(tend=tend, name=name)
         c.start()
@@ -194,9 +203,10 @@ if __name__ == '__main__':
 
     print('ended',time.time() - tend)
 
-    with open('sion_32_2048mb_ec2_with_data_transfer_multi_threaded32.csv', 'w') as f:
+    with open('sion_32_2048mb_ec2_with_data_transfer_multi_threaded64.csv', 'w') as f:
         filewriter = csv.writer(f, delimiter='\t',  quotechar='|', quoting=csv.QUOTE_MINIMAL)
         filewriter.writerow(['BatchId','Total Cached (Mb)','Batch Load Time (s)', 'Elapsed Time (s)'])
         while not outq.empty():
             val = outq.get()
             filewriter.writerow([val[0],val[1],val[2],val[3]])
+    '''

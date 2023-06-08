@@ -26,7 +26,7 @@ def lambda_handler(event, context):
     cache_bacth= event['cache_bacth'] 
     return_batch_data= event['return_batch_data'] 
     bucket_name=event['bucket']
-
+    cache_error_message = ''
     if cache_bacth:
         redis_client = redis.StrictRedis(host=event['redis_host'], port=event['redis_port'])
     try:
@@ -43,17 +43,19 @@ def lambda_handler(event, context):
                 redis_client.set(batch_id, json_samples)
                 isCached = True
             except Exception as e:
-                isCached = False      
+                isCached = False
+                cache_error_message = str(e)  
                 logger.error(e, exc_info=True)
 
         if not isCached or return_batch_data:
-                return {'batch_id': batch_id,'isCached': isCached,'batch_data':json_samples}
+                return {'batch_id': batch_id,'isCached': isCached,'batch_data':json_samples,'cache_error_message':cache_error_message}
         else:
-            return {'batch_id': batch_id,'isCached': isCached}
+            return {'batch_id': batch_id,'isCached': isCached,'cache_error_message':cache_error_message}
         
     except Exception as e:  # Catch all for easier error tracing in logs
         logger.error(e, exc_info=True)
-        raise Exception('Error occurred during execution')  # notify aws of failure
+        emesage = 'Error occurred during execution:' + str(e)
+        raise Exception(emesage)  # notify aws of failure
 
 
 def fetch_data_from_s3(bucket_name,batch_metadata,func_name):
