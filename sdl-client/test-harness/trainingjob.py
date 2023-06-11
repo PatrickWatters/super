@@ -1,6 +1,4 @@
 import argparse
-import json
-import logging
 import os
 import time
 import torch
@@ -12,9 +10,8 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from client import CMSClient
 from sdl_dataset import SDLDataset
+from profiler import TrainingProfiler, BatchMeasurment,EpochMeasurment
 import random
-from profiler_utils import TrainingProfiler, BatchMeasurment,EpochMeasurment
-
 class SDLSampler():
 
     def __init__(self,job_id, num_batches,sdl_client:CMSClient, ):        
@@ -48,6 +45,8 @@ parser.add_argument("-p", "--print-freq", default=1, type=int, metavar="N", help
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument("--batch-size", type=int, default=256)
 parser.add_argument("--pin-memory", type=int, default=0)
+parser.add_argument("-tid","--trail-id", default=random.randint(0,100), type=int, help="trialid")  # default 90
+
 best_acc1 = 0
 
 def main():
@@ -80,14 +79,8 @@ def main():
         print("using CPU, this will be slow")
         device = torch.device("cpu")
     
+    profiler = TrainingProfiler(args,args.trail_id,args.jobid, torch.cuda.device_count() )
 
-    args.dprof = TrainingProfiler(args,action="_".join(
-            [
-                "benchmark_e2e_torch",
-                str(args.arch),
-            ]
-        ),cuda_device_count = torch.cuda.device_count(),trailid=1,jobid=args.jobid
-    )
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
     optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
@@ -109,19 +102,26 @@ def main():
     train_dataset = SDLDataset(job_id=args.jobid, blob_classes=labelled_dataset,client=client, transform=transform, target_transform=None)
     sdl_sampler = SDLSampler(job_id=args.jobid, num_batches=batches_per_epoch, sdl_client =client)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=None, num_workers=args.num_workers, sampler=sdl_sampler, pin_memory=True if args.pin_memory == 1 else False)
+    train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=None, 
+                                               num_workers=args.num_workers, 
+                                               sampler=sdl_sampler, 
+                                               pin_memory=True if args.pin_memory == 1 else False)
     
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args)
         # train next epoch
-        train(train_loader, model, criterion, optimizer, epoch, args,device, client)
+        train(train_loader, model, criterion, optimizer, epoch, args,device, profiler)
+    
     client.job_ended_nofifcation(args.jobid)
+    
+    profiler.gen_final_job_report()
 
-def train(train_loader, model, criterion, optimizer, epoch, args,device, client:CMSClient):
+
+def train(train_loader, model, criterion, optimizer, epoch, args,device, profiler:TrainingProfiler):
     total_cache_hits = 0
     total_cache_misses = 0
     total_files = 0
-    total_batch_time = AverageMeter("TotalTime", ":6.3f")
+    batch_time = AverageMeter("TotalTime", ":6.3f")
     data_prep_time = AverageMeter("Prep", ":6.3f")
     data_fetch_time = AverageMeter("Fetch", ":6.3f")
     transfer_to_gpu_time = AverageMeter("Transfer", ":6.3f")
@@ -129,17 +129,17 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
     losses = AverageMeter("Loss", ":.4e")
     top1 = AverageMeter("Acc@1", ":6.2f")
     top5 = AverageMeter("Acc@5", ":6.2f")
-    round_digits = 3 
+
     progress = ProgressMeter(
-        len(train_loader), [total_batch_time, data_fetch_time,data_prep_time, transfer_to_gpu_time,processing_time], prefix="Epoch: [{}]".format(epoch)
+        len(train_loader), [batch_time, data_fetch_time,data_prep_time, transfer_to_gpu_time,processing_time], prefix="Epoch: [{}]".format(epoch)
     )
 
     # switch to train mode
     model.train()
+    
     end = time.time()
 
     for i, (images, labels,batch_id, cache_hit, prep_time) in enumerate(train_loader):
-
         # measure data loading time
         data_fetch_time.update((time.time() - end)-prep_time)
         data_prep_time.update(prep_time)
@@ -177,7 +177,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
         processing_time.update(time.time() - processing_started)
 
         # measure elapsed time
-        total_batch_time.update(time.time() - end)
+        batch_time.update(time.time() - end)
 
         if i % args.print_freq == 0:
             progress.display(i + 1)
@@ -185,49 +185,45 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
             JobId=args.jobid,
             BatchId = batch_id,
             Epoch=epoch,
-            Batch_Idx= i+1,
-            Num_Files=len(images),
-            TotalTime = round(total_batch_time.val,round_digits),
-            Speed = round(len(images)/total_batch_time.val,round_digits),
-            CacheHit = False,
-            DataLoadingTime = round(data_fetch_time.val,round_digits),
-            TransferToGpuTime = round(transfer_to_gpu_time.val,round_digits),
-            ComputeTime= round(processing_time.val,round_digits),
-            Loss =round(losses.val,round_digits),
-            Acc1 =round(top1.val.item(),round_digits),
-            Acc5 =round(top5.val.item(),round_digits),
-            AvgTime = round(total_batch_time.avg,round_digits),
-            AvgSpeed = round(len(images)/total_batch_time.avg,round_digits),
-            AvgDataLoadingTime = round(data_fetch_time.avg,round_digits),
-            AvgTransferToGpuTime = round(transfer_to_gpu_time.avg,round_digits),
-            AvgComputeTime= round(processing_time.avg,round_digits),
-            TotalHits = total_cache_hits,
-            TotalMisses = total_cache_misses,
-            HitPercentage = round(total_cache_hits/(total_cache_hits+total_cache_misses),round_digits))
-            #HitPercentage =0)
-            args.dprof.log_batch_stats(batch_stats)
+            BatchIdx= i+1,
+            NumFiles=len(images),
+            TotalBatchTime = batch_time.val,
+            ImgsPerSec = len(images)/batch_time.val,
+            DataFetchTime = data_fetch_time.val,
+            DataPrepTime = data_prep_time.val,
+            TransferToGpuTime = transfer_to_gpu_time.val,
+            ProcessingTime= processing_time.val,
+            Loss =losses.val,
+            Acc1 =top1.val.item(),
+            Acc5 =top5.val.item(),
+            CacheHit = cache_hit)
+            profiler.log_batch_stats(batch_stats)
         end = time.time()
+    
     epoch_ststs = EpochMeasurment(
         JobId=args.jobid,
         Epoch=epoch,
         NumBatches = i+1,
         NumFiles = total_files,
-        TotalTime = total_batch_time.sum,
-        Speed = round(total_files/total_batch_time.sum,round_digits), # this isn't right
-        TotalDataLoadingTime = round(data_fetch_time.sum,round_digits),
-        TotalTransferToGpuTime = round(transfer_to_gpu_time.sum,round_digits),
-        TotalComputeTime = round(processing_time.sum,round_digits),
-        Loss =round(losses.avg,round_digits),
-        Acc1 =round(top1.avg.item(),round_digits),
-        Acc5 =round(top5.avg.item(),round_digits),
-        AvgBatchTime = round(total_batch_time.avg,round_digits),
-        AvgDataLoadingTime = round(data_fetch_time.avg,round_digits),
-        AvgTransferToGpuTime = round(transfer_to_gpu_time.avg,round_digits),
-        AvgComputeTime = round(processing_time.avg,round_digits),
-        TotalHits = total_cache_hits,
-        TotalMisses = total_cache_misses,
-        HitPercentage = round(total_cache_hits/(total_cache_hits+total_cache_misses),round_digits))
-    args.dprof.log_epoch_stats(epoch_ststs)
+        TotalEpochTime = batch_time.sum,
+        ImgsPerSec = total_files/batch_time.sum,
+        BatchesPerSec = (i+1)/batch_time.sum,
+        TotalDataFetchTime = data_fetch_time.sum,
+        TotalDataPrepTime = data_prep_time.sum,
+        TotalTransferToGpuTime = transfer_to_gpu_time.sum,
+        TotalProcessingTime = processing_time.sum,  
+        AvgLoss =losses.avg,
+        AvgAcc1 =top1.avg.item(),
+        AvgAcc5 =top5.avg.item(),    
+        AvgBatchTime = batch_time.avg,
+        AvgDataFetchTime = data_fetch_time.avg,
+        AvgDataPrepTime = data_prep_time.avg,
+        AvgTransferToGpuTime = transfer_to_gpu_time.avg,
+        AvgProcessingTime = processing_time.avg,
+        TotalCacheHits = total_cache_hits,
+        TotaCacheMisses = total_cache_misses,
+        CacheHitPercentage = total_cache_hits/(total_cache_hits+total_cache_misses))
+    profiler.log_epoch_stats(epoch_ststs)
 
 
 class AverageMeter(object):
