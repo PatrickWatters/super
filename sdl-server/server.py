@@ -11,11 +11,12 @@ from job import MLTrainingJob
 import logging
 import json
 from batch import BatchGroup
-from misc.unique_priority_queue import UniquePriorityQueue
+from unique_priority_queue import UniquePriorityQueue
 import time
 import threading
 from batch import Batch
 from lambda_wrapper import LambdaWrapper
+from misc.redis_client import RedisClient
 
 logging.basicConfig(format='%(asctime)s - %(message)s',filename='server.log', encoding='utf-8', level=logging.INFO)
 
@@ -27,10 +28,14 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self.active_training_jobs = {}
         self.global_batch_group_idx = 0
         self.global_queue = UniquePriorityQueue()
+        self.global_queue.set_groups(self.batch_groups)
+        self.global_queue.start_con()
         self._read_config()
         self._check_environment()
+        self.lambda_wrapper = LambdaWrapper(self.bucket_name, self.redis_host, self.redis_port,function_name=self.lambda_func_name)
+        self.redis_client:RedisClient = RedisClient(self.redis_host,self.redis_port)
         self._gen_new_group_of_batches() #create an initial set of batches
-        #self.start_consuming()
+
         pass
 
     def _read_config(self):
@@ -63,19 +68,21 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
             print(f'The bucket {self.bucket_name} does not exist or you have no access.')
             return
         #load training dataset S3 bucket
-        self.train_dataset = Dataset(self.bucket_name,'train',self.micro_batch_size, drop_last=self.drop_last, redis_port=self.redis_port,
-                                     redis_host= self.redis_host, lambda_func_name= self.lambda_func_name)
+        self.train_dataset = Dataset(self.bucket_name,'train',self.micro_batch_size, drop_last=self.drop_last, use_random_sampling=
+                                      self.random_sampling_enabled)
         print(f'Successfully loaded dataset from "{self.bucket_name}/train". Total files:{self.train_dataset.length}')
 
     def _gen_new_group_of_batches(self):
         self.global_batch_group_idx +=1 #TODO:
-        new_batches = self.train_dataset.generate_batches(self.global_batch_group_idx, use_random_sampling = self.random_sampling_enabled)
-        self.batch_groups[self.global_batch_group_idx] = BatchGroup(self.global_batch_group_idx,new_batches)
+        new_batches = self.train_dataset.generate_set_of_batches(self.global_batch_group_idx)
+        self.batch_groups[self.global_batch_group_idx] = BatchGroup(self.global_batch_group_idx,new_batches,self.lambda_wrapper,self.redis_client)
 
     def RegisterNewTrainingJob(self, request, context):
         job_id = request.job_id
         batch_size = request.batch_size 
-        newjob = MLTrainingJob(job_id,batch_size,self.look_ahead_distance,self.warm_up_distance,global_priority_queue=self.global_queue)
+        
+        newjob = MLTrainingJob(job_id,batch_size,self.look_ahead_distance,
+                               self.warm_up_distance,self.global_queue,self.use_substitutional_hits)
 
         if self.drop_last:
             batches_per_epoch = len(self.train_dataset) // batch_size  # type: ignore[arg-type]
@@ -95,33 +102,28 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         training_job:MLTrainingJob = self.active_training_jobs[request.job_id]
         training_job.set_avg_training_speed(request.avg_training_speed)
         training_job.update_data_laoding_delay(request.prev_batch_dl_delay)
-        training_job.increment_batches_processed()
+        #training_job.increment_batches_processed()
 
         if len(training_job.currEpoch_remainingBatches) < 1: #batches exhausted, starting a new epoch
-            self._assign_new_batches_to_job_for_epoch(training_job=training_job)
+            self._assign_new_batches_to_job_for_epoch(training_job)
             training_job.reset_epoch_timer()
             training_job.reset_dl_delay()
 
-        next_batch_id, next_batch_indices, isCached = training_job._next_batch(self.use_substitutional_hits)
-        batch_data = None
-        if not isCached:
-            batch_data = self.train_dataset.fetch_bacth_data(next_batch_id,next_batch_indices,False)
+        next_batch_id, cache_hit, batch_data, next_batch_incides = training_job.find_next_batch()
         
-        result = {'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_indices), 'isCached': isCached,'batch_data': batch_data}
-        logging.info({'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_indices), 'isCached': isCached})
-
+        result = {'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_incides), 'isCached': cache_hit,'batch_data': batch_data}
+        logging.info({'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_incides), 'isCached': cache_hit})
         return pb2.GetNextBatchForJobResponse(**result)
     
     def _assign_new_batches_to_job_for_epoch(self,training_job:MLTrainingJob):
         if training_job.currEpoch_batchGroup is not None:
-            self.batch_groups[training_job.currEpoch_batchGroup].processed_by.append(training_job.job_id)
+            self.batch_groups[training_job.currEpoch_batchGroup.group_id].processed_by.append(training_job.job_id)
 
         if  training_job.job_id in self.batch_groups[self.global_batch_group_idx].processed_by:
             self._gen_new_group_of_batches()
         
-        training_job.set_batches_for_new_epoch(self.global_batch_group_idx,self.batch_groups[self.global_batch_group_idx].batches)
-        training_job.increment_epochs_processed()  
-
+        training_job.set_batches_for_new_epoch(self.batch_groups[self.global_batch_group_idx])
+        training_job.increment_epochs_processed()
     
     def ProcessJobEndedMessage(self, request, context):
         job_id = request.job_id
@@ -140,53 +142,6 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         result = {'message': result, 'received': True}
         return pb2.MessageResponse(**result)
     
-    def start_consuming(self):
-        consumers = []
-        for i in range(1):
-            name = 'Consumer-{}'.format(i)
-            c = ConsumerThread(name=name, bucket_name=self.bucket_name, redis_host=self.redis_host, redis_port=self.redis_port, queue=self.global_queue, batch_groups=self.batch_groups)
-            c.start()
-            consumers.append(c)
-
-        for consumer in consumers:
-            consumer.join()
-    
-class ConsumerThread(threading.Thread):
-    def __init__(self, name, bucket_name,redis_host,redis_port,queue,batch_groups, group=None, target=None, args=(), kwargs=None, verbose=None):
-        super(ConsumerThread,self).__init__()
-        self.q:UniquePriorityQueue = queue
-        self.batch_groups=batch_groups
-        self.target = target
-        self.name = name
-        self.lambda_wrapper = LambdaWrapper()
-        self.bucket_name = bucket_name
-        self.redis_host = redis_host
-        self.redis_port = redis_port
-        return
-    
-    def run(self):
-        while True:
-            item = self.q.get()
-            #decide what to do next..
-            item = list(item)
-            priority, task = item
-            job_id, group_id, batch_id = task
-            batch_in_question:Batch = self.batch_groups[group_id][batch_id]
-                
-            if not batch_in_question.isCached:
-                print(self.name + ' getting ' + str(item)  + ' : ' + str(self.q.qsize()) + ' items in queue')
-
-                fun_params = {}
-                fun_params['batch_metadata'] = batch_in_question.labelled_paths
-                fun_params['batch_id'] = batch_in_question.batch_id
-                fun_params['cache_bacth'] = True
-                fun_params['return_batch_data'] = False
-                fun_params['bucket'] = self.bucket_name
-                fun_params['redis_host'] = self.redis_host 
-                fun_params['redis_port'] = self.redis_port
-                self.lambda_wrapper.invoke_function()
-                batch_in_question.isCached = True
-
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

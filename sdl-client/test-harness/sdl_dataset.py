@@ -38,14 +38,13 @@ class SDLDataset(Dataset):
         batch_data = input[3]
 
         if isCached:
-            batch_data = redis_client.get_data(batch_id)
             cache_hit = True
         else:
             cache_hit = False
-            end = time.time()
-            torch_imgs, torch_lables = self.convert_json_batch_to_torch_format(batch_data)
-            prep_time = time.time() - end
-        return torch_imgs, torch_lables, batch_id, isCached, prep_time
+        end = time.time()
+        torch_imgs, torch_lables = self.convert_json_batch_to_torch_format(batch_data)
+        prep_time = time.time() - end
+        return torch_imgs, torch_lables, batch_id, cache_hit, prep_time
 
     def convert_json_batch_to_torch_format(self,batch_data):
         samples = json.loads(batch_data)

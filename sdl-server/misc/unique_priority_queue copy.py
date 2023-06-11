@@ -18,7 +18,7 @@ class UniquePriorityQueue(Queue):
     def _put(self, item, heappush=heapq.heappush):
         item = list(item)
         priority, task = item
-        job_id, group_id, batch_id = task
+        job_id, group_id, batch_id,action = task
         
         if batch_id in self.entry_finder:
             previous_item = self.entry_finder[batch_id]
@@ -37,7 +37,7 @@ class UniquePriorityQueue(Queue):
                 heappush(self.queue, item)
             else:
                 # Do not add new item.
-                print('duplicate entry with lower prioirty so not added',item)
+                #print('duplicate entry with lower prioirty so not added',item)
                 pass
         else:
             self.entry_finder[batch_id] = item
@@ -50,7 +50,7 @@ class UniquePriorityQueue(Queue):
             item = heappop(self.queue)
             _, task = item
             if task is not self.REMOVED:
-                job_id, group_id, batch_id = task
+                job_id, group_id, batch_id, action = task
                 del self.entry_finder[batch_id]
                 return item
         raise KeyError('It should never happen: pop from an empty priority queue')
@@ -76,12 +76,18 @@ class ConsumerThread(threading.Thread):
 if __name__ == '__main__':
     consumers = []
     q = UniquePriorityQueue()
-    COUNTER = 100
-    for i in range(0, 100):
-        COUNTER -=1
-    #self.global_priority_queue.put((predicted_access_time,(self.job_id,batch_id, self.current_batch_group)))
-    #q.put((np.Infinity,i))
-        q.put((i,(64,1,1)))
+
+    pri =0
+    job_id = '808'
+    currEpoch = 1
+    batch_id = '123456789'
+    action = 'prefetch'
+    q.put((pri,(job_id,currEpoch,batch_id, action)))
+
+    item = q.get()
+
+
+
 
     end = time.time()
     for i in range(1):

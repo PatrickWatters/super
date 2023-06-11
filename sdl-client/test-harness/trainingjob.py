@@ -13,6 +13,8 @@ import torchvision.transforms as transforms
 from client import CMSClient
 from sdl_dataset import SDLDataset
 import random
+from profiler_utils import TrainingProfiler, BatchMeasurment,EpochMeasurment
+
 class SDLSampler():
 
     def __init__(self,job_id, num_batches,sdl_client:CMSClient, ):        
@@ -78,6 +80,14 @@ def main():
         print("using CPU, this will be slow")
         device = torch.device("cpu")
     
+
+    args.dprof = TrainingProfiler(args,action="_".join(
+            [
+                "benchmark_e2e_torch",
+                str(args.arch),
+            ]
+        ),cuda_device_count = torch.cuda.device_count(),trailid=1,jobid=args.jobid
+    )
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
     optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
@@ -119,7 +129,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
     losses = AverageMeter("Loss", ":.4e")
     top1 = AverageMeter("Acc@1", ":6.2f")
     top5 = AverageMeter("Acc@5", ":6.2f")
-    round_by_points = 3
+    round_digits = 3 
     progress = ProgressMeter(
         len(train_loader), [total_batch_time, data_fetch_time,data_prep_time, transfer_to_gpu_time,processing_time], prefix="Epoch: [{}]".format(epoch)
     )
@@ -131,13 +141,14 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
     for i, (images, labels,batch_id, cache_hit, prep_time) in enumerate(train_loader):
 
         # measure data loading time
-        data_fetch_time.update(time.time() - end)
+        data_fetch_time.update((time.time() - end)-prep_time)
         data_prep_time.update(prep_time)
         total_files += len(images)
 
         if cache_hit:
             total_cache_hits +=1
         else:
+            print(batch_id)
             total_cache_misses +=1
 
         #measure time to transfer data to GPU
@@ -170,8 +181,55 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, client:
 
         if i % args.print_freq == 0:
             progress.display(i + 1)
-        
+            batch_stats = BatchMeasurment(
+            JobId=args.jobid,
+            BatchId = batch_id,
+            Epoch=epoch,
+            Batch_Idx= i+1,
+            Num_Files=len(images),
+            TotalTime = round(total_batch_time.val,round_digits),
+            Speed = round(len(images)/total_batch_time.val,round_digits),
+            CacheHit = False,
+            DataLoadingTime = round(data_fetch_time.val,round_digits),
+            TransferToGpuTime = round(transfer_to_gpu_time.val,round_digits),
+            ComputeTime= round(processing_time.val,round_digits),
+            Loss =round(losses.val,round_digits),
+            Acc1 =round(top1.val.item(),round_digits),
+            Acc5 =round(top5.val.item(),round_digits),
+            AvgTime = round(total_batch_time.avg,round_digits),
+            AvgSpeed = round(len(images)/total_batch_time.avg,round_digits),
+            AvgDataLoadingTime = round(data_fetch_time.avg,round_digits),
+            AvgTransferToGpuTime = round(transfer_to_gpu_time.avg,round_digits),
+            AvgComputeTime= round(processing_time.avg,round_digits),
+            TotalHits = total_cache_hits,
+            TotalMisses = total_cache_misses,
+            HitPercentage = round(total_cache_hits/(total_cache_hits+total_cache_misses),round_digits))
+            #HitPercentage =0)
+            args.dprof.log_batch_stats(batch_stats)
         end = time.time()
+    epoch_ststs = EpochMeasurment(
+        JobId=args.jobid,
+        Epoch=epoch,
+        NumBatches = i+1,
+        NumFiles = total_files,
+        TotalTime = total_batch_time.sum,
+        Speed = round(total_files/total_batch_time.sum,round_digits), # this isn't right
+        TotalDataLoadingTime = round(data_fetch_time.sum,round_digits),
+        TotalTransferToGpuTime = round(transfer_to_gpu_time.sum,round_digits),
+        TotalComputeTime = round(processing_time.sum,round_digits),
+        Loss =round(losses.avg,round_digits),
+        Acc1 =round(top1.avg.item(),round_digits),
+        Acc5 =round(top5.avg.item(),round_digits),
+        AvgBatchTime = round(total_batch_time.avg,round_digits),
+        AvgDataLoadingTime = round(data_fetch_time.avg,round_digits),
+        AvgTransferToGpuTime = round(transfer_to_gpu_time.avg,round_digits),
+        AvgComputeTime = round(processing_time.avg,round_digits),
+        TotalHits = total_cache_hits,
+        TotalMisses = total_cache_misses,
+        HitPercentage = round(total_cache_hits/(total_cache_hits+total_cache_misses),round_digits))
+    args.dprof.log_epoch_stats(epoch_ststs)
+
+
 class AverageMeter(object):
     """Computes and stores the average and current value."""
     def __init__(self, name, fmt=":f"):

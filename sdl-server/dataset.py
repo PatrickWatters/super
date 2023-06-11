@@ -4,12 +4,11 @@ import json
 import boto3
 from torch.utils.data.sampler import RandomSampler,BatchSampler, SequentialSampler
 from batch import Batch, BatchGroup
-from lambda_wrapper import LambdaWrapper
 s3_client = boto3.client('s3')
 s3Resource = boto3.resource("s3")
 
 class Dataset():
-    def __init__(self,s3_bucket_name,prefix, batch_size, drop_last, redis_port, redis_host, lambda_func_name='lambda_dataloader'):
+    def __init__(self,s3_bucket_name,prefix, batch_size, use_random_sampling:bool, drop_last):
         self.bucket_name = s3_bucket_name
         self.batch_size = batch_size
         self.drop_last =drop_last
@@ -17,10 +16,7 @@ class Dataset():
         self.IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG','.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',]
         self._blob_classes = self._classify_blobs()
         self.length = sum(len(class_items) for class_items in self._blob_classes.values())
-        self.redis_port =redis_port
-        self.redis_host =redis_host
-        self.lambda_func_name = lambda_func_name
-        self.lambda_wrapper = LambdaWrapper()
+        self.use_random_sampling = use_random_sampling
     
 
     def is_image_file(self, filename):
@@ -77,14 +73,16 @@ class Dataset():
             return s
         return s[len(prefix) :]
     
-    def generate_batches(self,seed:int, use_random_sampling:bool):
+    def generate_set_of_batches(self,seed:int):
         setOfbatches={}
-        if use_random_sampling:
+        
+        if self.use_random_sampling:
             base_sampler = RandomSampler(self)
         else:
             base_sampler = SequentialSampler(self)
         
         batch_sampler = BatchSampler(base_sampler, batch_size=self.batch_size, drop_last=False)
+        
         for i,batch_indiceis in enumerate(batch_sampler):
                 batch_id = abs(hash(frozenset(batch_indiceis)))
                 labelled_paths =[]
@@ -92,25 +90,3 @@ class Dataset():
                     labelled_paths.append(self._classed_items[id])
                 setOfbatches[batch_id] = Batch(id=batch_id,group_id=seed, indices=batch_indiceis,labelled_paths=labelled_paths)
         return setOfbatches
-    
-    def fetch_bacth_data(self, batch_id, batch_indices,cache_after_retrevial=False):
-        
-        batch_metadata =[]
-        for id in batch_indices:
-            batch_metadata.append(self._classed_items[id])
-
-        fun_params = {}
-        fun_params['batch_metadata'] = batch_metadata
-        fun_params['batch_id'] = batch_id
-        fun_params['cache_bacth'] = cache_after_retrevial
-        fun_params['return_batch_data'] = True
-        fun_params['bucket'] = self.bucket_name
-        fun_params['redis_host'] = self.redis_host 
-        fun_params['redis_port'] = self.redis_port
-
-        response = self.lambda_wrapper.invoke_function(self.lambda_func_name,fun_params)
-        paylaod = json.load(response['Payload'])
-        if 'errorMessage' in paylaod:
-            print(paylaod['errorMessage'])
-        else:
-           return paylaod['batch_data']    
