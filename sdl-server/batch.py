@@ -4,6 +4,7 @@ from lambda_wrapper import LambdaWrapper
 import json
 from misc.redis_client import RedisClient
 import time
+from threading import Lock
 
 class Batch():
     def __init__(self,id, group_id,indices,labelled_paths):
@@ -26,27 +27,32 @@ class BatchGroup():
         self.isActive = True
         self.lambda_wrapper:LambdaWrapper =lambda_wrapper
         self.redis_client:RedisClient = redis_client
-    
+        self.lock = Lock()
+
     def batchIsInProgress(self,bacth_id):
         return self.batches[bacth_id].inProgress
     
     def setBatchIsInProgress(self,bacth_id, progress_status):
-        self.batches[bacth_id].inProgress = progress_status
+        with self.lock:
+            self.batches[bacth_id].inProgress = progress_status
 
     def batchIsCached(self,bacth_id):
         return self.batches[bacth_id].isCached
     
     def setCachedSatus(self,bacth_id, cached_status):
-         self.batches[bacth_id].isCached = cached_status
+        with self.lock:
+             self.batches[bacth_id].isCached = cached_status
     
     def setProcessedBy(self,bacth_id,job_id):
-         self.batches[bacth_id].processed_by.append(job_id)
+        with self.lock:
+            self.batches[bacth_id].processed_by.append(job_id)
     
     def getlastPingedTimestamp(self,bacth_id):
        return self.batches[bacth_id].last_pinged_timestamp
     
     def setlastPingedTimestamp(self,bacth_id):
-        self.batches[bacth_id].last_pinged_timestamp = time.time()
+        with self.lock:
+            self.batches[bacth_id].last_pinged_timestamp = time.time()
     
     def get_batch_ids(self):
           return list(self.batches.keys())
@@ -54,10 +60,12 @@ class BatchGroup():
     def get_batch_indices(self,batch_id):
         return self.batches[batch_id].indices
     
+    
     def prefetch_batch(self, batch_id):
 
         if self.batchIsCached(batch_id) or self.batchIsInProgress(batch_id):
             return
+        
         self.setBatchIsInProgress(batch_id, True)
 
         cache_after_retrevial = True
@@ -71,6 +79,7 @@ class BatchGroup():
             print(paylaod['errorMessage'])
 
         elif paylaod['isCached'] == True:
+
             self.setCachedSatus(batch_id, True)
             self.setlastPingedTimestamp(batch_id)
 
