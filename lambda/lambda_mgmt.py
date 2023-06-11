@@ -3,10 +3,10 @@ import base64
 import json
 import logging
 import boto3
-from deploy.custom_waiter import CustomWaiter,WaitState
-from deploy.lambda_basics import LambdaWrapper
-from deploy.retries import wait
-import deploy.question as q
+from misc.custom_waiter import CustomWaiter,WaitState
+from misc.lambda_basics import LambdaWrapper
+from misc.retries import wait
+import misc.question as q
 
 logger = logging.getLogger(__name__)
 
