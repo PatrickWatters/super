@@ -1,10 +1,8 @@
 from queue import Queue
 import heapq
-
 from  batch import BatchGroup
 from threading import Thread
-from concurrent.futures import ThreadPoolExecutor
-
+from threading import Lock
 
 class UniquePriorityQueue(Queue):
 
@@ -12,16 +10,13 @@ class UniquePriorityQueue(Queue):
         self.queue = []
         self.REMOVED = object()
         self.entry_finder = {}
-        #self.batch_groups = None
         self.batch_groups:dict[str, BatchGroup] = None
-        #self.executor = ThreadPoolExecutor(max_workers=32)
         self.consumers = []
 
     def _put(self, item, heappush=heapq.heappush):
         item = list(item)
         priority, task = item
         job_id, group_id, batch_id,action = task
-        
         if batch_id in self.entry_finder:
             previous_item = self.entry_finder[batch_id]
             previous_job_id = previous_item[1][0]
@@ -63,18 +58,16 @@ class UniquePriorityQueue(Queue):
     def set_groups(self, g):
         self.batch_groups = g
 
-    def start_con(self):
-        for i in range(32):
+    def start_consumers(self, num_consumers=32):
+        # create a shared lock
+        lock = Lock()
+        for i in range(num_consumers):
             name = 'Consumer-{}'.format(i)
-            c = Thread(name=name,target=self.proc)
-            #c = ConsumerThread(name=name,target=self.proc)
+            c = Thread(name=name,target=self.process_item, args=(lock,))
             c.start()
             self.consumers.append(c)
-        
-        #for consumer in self.consumers:
-        #    consumer.join()
-    
-    def proc(self):
+
+    def process_item(self, lock):
         while True:
             if not self.empty():
                 pri, item = self.get()
@@ -82,28 +75,8 @@ class UniquePriorityQueue(Queue):
                 if action == 'prefetch':
                 #print('prefetch')
                  group:BatchGroup = self.batch_groups[group_id]
-                 group.prefetch_batch(batch_id)
+                 group.prefetch_batch(batch_id,lock)
                 if action == 'ping':
-                 print('ping')
-                 group:BatchGroup = self.batch_groups[group_id]
-                 group.ping_batch_in_cache(batch_id)
-        
-    def start(self):
-        while True:
-            if not self.empty():
-               self.executor.submit(self.process_item) # does not block
-
-    def start_consume(self):
-        self.executor.submit(self.start)
-
-    def process_item(self):
-        pri, item = self.get()
-        job_id, group_id, batch_id,action = item
-        if action == 'prefetch':
-                #print('prefetch')
-                 group:BatchGroup = self.batch_groups[group_id]
-                 group.prefetch_batch(batch_id)
-        if action == 'ping':
                  print('ping')
                  group:BatchGroup = self.batch_groups[group_id]
                  group.ping_batch_in_cache(batch_id)
