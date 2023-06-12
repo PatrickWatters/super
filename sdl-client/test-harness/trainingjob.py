@@ -10,7 +10,8 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from client import CMSClient
 from sdl_dataset import SDLDataset
-from profiler import TrainingProfiler, BatchMeasurment,EpochMeasurment
+from reporting.dataobjects import BatchMeasurment, EpochMeasurment
+from  reporting.profiler import TrainingProfiler
 import random
 class SDLSampler():
 
@@ -187,10 +188,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, profile
             Epoch=epoch,
             BatchIdx= i+1,
             NumFiles=len(images),
-            TotalBatchTime = batch_time.val,
+            BatchTime = batch_time.val,
             ImgsPerSec = len(images)/batch_time.val,
-            DataFetchTime = data_fetch_time.val,
-            DataPrepTime = data_prep_time.val,
+            BatchFetchTime = data_fetch_time.val,
+            BatchPrepTime = data_prep_time.val,
             TransferToGpuTime = transfer_to_gpu_time.val,
             ProcessingTime= processing_time.val,
             Loss =losses.val,
@@ -205,19 +206,19 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, profile
         Epoch=epoch,
         NumBatches = i+1,
         NumFiles = total_files,
-        TotalEpochTime = batch_time.sum,
+        EpochTime = batch_time.sum,
         ImgsPerSec = total_files/batch_time.sum,
         BatchesPerSec = (i+1)/batch_time.sum,
-        TotalDataFetchTime = data_fetch_time.sum,
-        TotalDataPrepTime = data_prep_time.sum,
+        TotalBatchFetchTime = data_fetch_time.sum,
+        TotalBatchPrepTime = data_prep_time.sum,
         TotalTransferToGpuTime = transfer_to_gpu_time.sum,
         TotalProcessingTime = processing_time.sum,  
-        AvgLoss =losses.avg,
-        AvgAcc1 =top1.avg.item(),
-        AvgAcc5 =top5.avg.item(),    
+        Loss =losses.val,
+        Acc1 =top1.val.item(),
+        Acc5 =top5.val.item(),  
         AvgBatchTime = batch_time.avg,
-        AvgDataFetchTime = data_fetch_time.avg,
-        AvgDataPrepTime = data_prep_time.avg,
+        AvgBatchFetchTime = data_fetch_time.avg,
+        AvgBatchPrepTime = data_prep_time.avg,
         AvgTransferToGpuTime = transfer_to_gpu_time.avg,
         AvgProcessingTime = processing_time.avg,
         TotalCacheHits = total_cache_hits,
