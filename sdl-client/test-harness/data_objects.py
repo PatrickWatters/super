@@ -33,9 +33,9 @@ class EpochMeasurment:
     TransferToGpuTime: float
     ProcessingTime: float
 
-    Loss: dict
-    Acc1: dict
-    Acc5: dict
+    AvgLoss: dict
+    AvgAcc1: dict
+    AvgAcc5: dict
 
     AvgBatchTime: float
     AvgDataFetchTime: float

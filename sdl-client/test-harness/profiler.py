@@ -88,9 +88,9 @@ class TrainingProfiler():
         self.job_measurment.TotalProcessingTime += epoch_measurement.ProcessingTime
         self.job_measurment.TotalCacheHits += epoch_measurement.TotalCacheHits
         self.job_measurment.TotaCacheMisses += epoch_measurement.TotaCacheMisses
-        self.job_measurment.Loss = epoch_measurement.Loss
-        self.job_measurment.Acc1 = epoch_measurement.Acc1
-        self.job_measurment.Acc5 = epoch_measurement.Acc5
+        self.job_measurment.Loss = epoch_measurement.AvgLoss
+        self.job_measurment.Acc1 = epoch_measurement.AvgAcc1
+        self.job_measurment.Acc5 = epoch_measurement.AvgAcc5
 
     def gen_final_exel_report(self):
         job:JobMeasurment = self.job_measurment 

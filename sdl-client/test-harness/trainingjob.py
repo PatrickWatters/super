@@ -157,21 +157,19 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, profile
         if cache_hit:
             total_cache_hits +=1
         else:
-            print(batch_id)
             total_cache_misses +=1
-
-        #measure time to transfer data to GPU
+        
+        # move data to the same device as model
         transfer_start = time.time()
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
         transfer_to_gpu_time.update(time.time() - transfer_start)
-
-        #measure time to process batch on device
-        processing_started = time.time()
-        #time.sleep(args.training_speed)
-
+       
+        # compute output
+        processing_started = time.time() 
         output = model(images)
         loss = criterion(output, labels)
+
         # measure accuracy and record loss
         acc1, acc5 = accuracy(output, labels, topk=(1, 5))
         losses.update(loss.item(), images.size(0))
@@ -182,7 +180,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, profile
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-      
+
         processing_time.update(time.time() - processing_started)
 
         # measure elapsed time
@@ -200,9 +198,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, profile
             DataPrepTime = data_prep_time.val,
             TransferToGpuTime = transfer_to_gpu_time.val,
             ProcessingTime= processing_time.val,
-            Loss =losses.val,
-            Acc1 =top1.val.item(),
-            Acc5 =top5.val.item(),
+            Loss =loss.item(),
+            Acc1 =acc1.item(),
+            Acc5 =acc5.item(),
             CacheHit = cache_hit))
         
         if i % args.print_freq == 0:
@@ -222,9 +220,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, profile
         DataPrepTime = data_prep_time.sum,
         TransferToGpuTime = transfer_to_gpu_time.sum,
         ProcessingTime = processing_time.sum,  
-        Loss =losses.val,
-        Acc1 =top1.val.item(),
-        Acc5 =top5.val.item(),  
+        AvgLoss =losses.avg,
+        AvgAcc1= top1.avg,
+        AvgAcc5= top5.avg,
         AvgBatchTime = batch_time.avg,
         AvgDataFetchTime = data_fetch_time.avg,
         AvgDataPrepTime = data_prep_time.avg,
