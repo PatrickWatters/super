@@ -1,3 +1,5 @@
+import dataclasses
+
 @dataclasses.dataclass
 class BatchMeasurment:
     JobId :int
@@ -5,10 +7,10 @@ class BatchMeasurment:
     Epoch: int
     BatchIdx: int
     NumFiles:int
-    BatchTime: float
+    TotalBatchTime: float
     ImgsPerSec: float
-    BatchFetchTime: float
-    BatchPrepTime: float
+    DataFetchTime: float
+    DataPrepTime: float
     TransferToGpuTime: float
     ProcessingTime: float
     Loss: float
@@ -22,21 +24,22 @@ class EpochMeasurment:
     Epoch: int
     NumBatches: int
     NumFiles:int
-    EpochTime: float
+    TotalEpochTime: float
     ImgsPerSec: float
     BatchesPerSec: float
 
-    TotalBatchFetchTime: float
-    TotalBatchPrepTime: float
-    TotalTransferToGpuTime: float
-    TotalProcessingTime: float
+    DataFetchTime: float
+    DataPrepTime: float
+    TransferToGpuTime: float
+    ProcessingTime: float
 
     Loss: dict
     Acc1: dict
     Acc5: dict
+
     AvgBatchTime: float
-    AvgBatchFetchTime: float
-    AvgBatchPrepTime: float
+    AvgDataFetchTime: float
+    AvgDataPrepTime: float
     AvgTransferToGpuTime: float
     AvgProcessingTime: float
     TotalCacheHits:int
@@ -46,36 +49,40 @@ class EpochMeasurment:
 @dataclasses.dataclass
 class JobMeasurment:
     JobId :int
-    TotalEpochs: int
-    TotalBatches: int
-    TotalFiles:int
-    JobTime: float
+    Dataset: str
+    Model: str
+    BacthSize: str
+    GPUCount: int
+
+    TotalEpochs: int =0
+    TotalBatches: int =0
+    TotalFiles:int =0
+    JobTime: float =0
+
+
+    ImgsPerSec:float =0
+    BatchesPerSec: float=0
+    EpochPerMin: float=0
+    TotalBatchFetchTime: float=0
+    TotalBatchPrepTime: float=0
+    TotalTransferToGpuTime: float=0
+    TotalProcessingTime: float=0
+
+    Loss: dict=None
+    Acc1: dict=None
+    Acc5: dict=None
+
+    AvgBatchTime: float=0
+    AvgEpochTime: float=0
     
+    AvgBatchFetchTime: float=0
+    AvgBatchPrepTime: float=0
+    AvgTransferToGpuTime: float=0
+    AvgProcessingTime: float=0
 
-
-    ImgsPerSec:float
-    BatchesPerSec: float
-    EpochPerSec: float
-    TotalBatchFetchTime: float
-    TotalBatchPrepTime: float
-    TotalTransferToGpuTime: float
-    TotalProcessingTime: float
-
-    Loss: dict
-    Acc1: dict
-    Acc5: dict
-
-    AvgBatchTime: float
-    AvgEpochTime: float
-    
-    AvgBatchFetchTime: float
-    AvgBatchPrepTime: float
-    AvgTransferToGpuTime: float
-    AvgProcessingTime: float
-
-    TotalCacheHits:int
-    TotaCacheMisses:int
-    CacheHitPercentage: float
+    TotalCacheHits:int=0
+    TotaCacheMisses:int=0
+    CacheHitPercentage: float=0
 
 import dataclasses
 
@@ -90,7 +97,7 @@ class TrialMeasurment:
     
     ImgsPerSec:float
     BatchesPerSec: float
-    EpochPerSec: float
+    EpochPerMiin: float
     JobsPerSec: float
 
 

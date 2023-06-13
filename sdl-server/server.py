@@ -29,7 +29,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self.global_batch_group_idx = 0
         self.global_queue = UniquePriorityQueue()
         self.global_queue.set_groups(self.batch_groups)
-        self.global_queue.start_con()
+        #self.global_queue.start_consumers()
         self._read_config()
         self._check_environment()
         self.lambda_wrapper = LambdaWrapper(self.bucket_name, self.redis_host, self.redis_port,function_name=self.lambda_func_name)
@@ -56,6 +56,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
             self.redis_port=int(config["SION"]["port"])
             self.redis_host=(config["SION"]["host"])
             self.lambda_func_name=config["SUPER"]["lambda_func_name"]
+            self.use_lambda = config.getboolean('SUPER','use_lambda')
 
             return config
         else:
@@ -75,7 +76,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
     def _gen_new_group_of_batches(self):
         self.global_batch_group_idx +=1 #TODO:
         new_batches = self.train_dataset.generate_set_of_batches(self.global_batch_group_idx)
-        self.batch_groups[self.global_batch_group_idx] = BatchGroup(self.global_batch_group_idx,new_batches,self.lambda_wrapper,self.redis_client)
+        self.batch_groups[self.global_batch_group_idx] = BatchGroup(self.global_batch_group_idx,new_batches,self.lambda_wrapper,self.redis_client, self.use_lambda)
 
     def RegisterNewTrainingJob(self, request, context):
         job_id = request.job_id

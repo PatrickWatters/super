@@ -103,33 +103,24 @@ class MLTrainingJob():
         
         next_batch_id = self.currEpoch_remainingBatches[0]
         isCached = self.currEpoch_batchGroup.batchIsCached(next_batch_id)
-
         batch_data = None
         cache_hit = False
-
         if isCached:
-            batch_data,cache_hit  = self.currEpoch_batchGroup.fetch_data_via_cache(next_batch_id)
+            batch_data,cache_hit = self.currEpoch_batchGroup.fetch_batch_via_cache(batch_id=next_batch_id)
         
         if batch_data is None and self.use_substitutional_hits:
             next_batch_id, batch_data,cache_hit = self.currEpoch_batchGroup.find_subsitution_batch(self.job_id, next_batch_id)
-        
+
         if batch_data is None:
-            batch_data = self.currEpoch_batchGroup.fetch_data_via_s3(next_batch_id)
-            cache_hit = False
-        
+            batch_data = self.currEpoch_batchGroup.fetch_batch_via_lambda(batch_id=next_batch_id,
+                                                                          include_batch_data_in_response=True,
+                                                                          isPrefetch=False)
         self.currEpoch_remainingBatches.remove(next_batch_id)
         self.currEpoch_batchGroup.setProcessedBy(next_batch_id, self.job_id)
-
         batch_incides = self.currEpoch_batchGroup.get_batch_indices(next_batch_id)
-
         self.increment_batches_processed()
                
         if self.warm_up_over:
-            #self.executor.submit(self.run_batch_access_time_prediction) # does not block
-            self.run_batch_access_time_prediction()
-
+            self.executor.submit(self.run_batch_access_time_prediction) # does not block
+            #self.run_batch_access_time_prediction()
         return next_batch_id, cache_hit, batch_data, batch_incides
-
-        
-    def _find_substitute_batch(self,next_batch_id, next_batch_indices):
-        return next_batch_id, next_batch_indices, False

@@ -8,11 +8,13 @@ import torch.optim
 import torch.utils.data.distributed
 import torchvision.models as models
 import torchvision.transforms as transforms
+from torch.optim.lr_scheduler import StepLR
 from client import CMSClient
 from sdl_dataset import SDLDataset
-from reporting.dataobjects import BatchMeasurment, EpochMeasurment
-from  reporting.profiler import TrainingProfiler
+from  data_objects import BatchMeasurment, EpochMeasurment
+from profiler import TrainingProfiler
 import random
+
 class SDLSampler():
 
     def __init__(self,job_id, num_batches,sdl_client:CMSClient, ):        
@@ -38,7 +40,7 @@ parser = argparse.ArgumentParser(description="PyTorch Training")
 parser.add_argument("-a","--arch",metavar="ARCH",default="resnet18",choices=model_names,help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",)
 parser.add_argument("-j", "--num-workers", default=0, type=int, metavar="N", help="number of data loading workers (default: 4)")
 parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="manual epoch number (useful on restarts)")
-parser.add_argument("-epochs","--epochs", default=3, type=int, metavar="N", help="number of total epochs to run")  # default 90
+parser.add_argument("-epochs","--epochs", default=2, type=int, metavar="N", help="number of total epochs to run")  # default 90
 parser.add_argument("--lr", "--learning-rate", default=0.1, type=float, metavar="LR", help="initial learning rate", dest="lr")
 parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
 parser.add_argument("--wd","--weight-decay",default=1e-4,type=float,metavar="W",help="weight decay (default: 1e-4)",dest="weight_decay",)
@@ -46,7 +48,7 @@ parser.add_argument("-p", "--print-freq", default=1, type=int, metavar="N", help
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument("--batch-size", type=int, default=256)
 parser.add_argument("--pin-memory", type=int, default=0)
-parser.add_argument("-tid","--trail-id", default=random.randint(0,100), type=int, help="trialid")  # default 90
+parser.add_argument("-tid","--trail-id", default=1, type=int, help="trialid")  # default 90 default=random.randint(0,100)
 
 best_acc1 = 0
 
@@ -55,7 +57,7 @@ def main():
     args.jobid = os.getpid()
     global best_acc1
     client = CMSClient()
-    
+
     #copy model to the correct device
     print("=> creating model '{}'".format(args.arch))
     model = models.__dict__[args.arch]()
@@ -85,7 +87,8 @@ def main():
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
     optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
     # Data loading part
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     transform = transforms.Compose(
@@ -111,14 +114,19 @@ def main():
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args)
         # train next epoch
-        train(train_loader, model, criterion, optimizer, epoch, args,device, profiler)
+        train(train_loader, model, criterion, optimizer, epoch+1, args,device, profiler=profiler)
+        
+        #acc1 = validate(val_loader, model, criterion, args) # remember best acc@1 and save checkpoint
+
+        scheduler.step()
+        #is_best = acc1 > best_acc1
+        #best_acc1 = max(acc1, best_acc1)
     
     client.job_ended_nofifcation(args.jobid)
-    
-    profiler.gen_final_job_report()
+    profiler.gen_final_exel_report()
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args,device, profiler:TrainingProfiler):
+def train(train_loader, model, criterion, optimizer, epoch, args,device, profiler:TrainingProfiler=None):
     total_cache_hits = 0
     total_cache_misses = 0
     total_files = 0
@@ -132,7 +140,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, profile
     top5 = AverageMeter("Acc@5", ":6.2f")
 
     progress = ProgressMeter(
-        len(train_loader), [batch_time, data_fetch_time,data_prep_time, transfer_to_gpu_time,processing_time], prefix="Epoch: [{}]".format(epoch)
+        len(train_loader), [batch_time, data_fetch_time,data_prep_time, transfer_to_gpu_time,processing_time, losses, top1], prefix="Epoch: [{}]".format(epoch)
     )
 
     # switch to train mode
@@ -180,52 +188,53 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device, profile
         # measure elapsed time
         batch_time.update(time.time() - end)
 
-        if i % args.print_freq == 0:
-            progress.display(i + 1)
-            batch_stats = BatchMeasurment(
+        profiler.record_batch_stats(BatchMeasurment(
             JobId=args.jobid,
             BatchId = batch_id,
             Epoch=epoch,
             BatchIdx= i+1,
             NumFiles=len(images),
-            BatchTime = batch_time.val,
+            TotalBatchTime = batch_time.val,
             ImgsPerSec = len(images)/batch_time.val,
-            BatchFetchTime = data_fetch_time.val,
-            BatchPrepTime = data_prep_time.val,
+            DataFetchTime = data_fetch_time.val,
+            DataPrepTime = data_prep_time.val,
             TransferToGpuTime = transfer_to_gpu_time.val,
             ProcessingTime= processing_time.val,
             Loss =losses.val,
             Acc1 =top1.val.item(),
             Acc5 =top5.val.item(),
-            CacheHit = cache_hit)
-            profiler.log_batch_stats(batch_stats)
+            CacheHit = cache_hit))
+        
+        if i % args.print_freq == 0:
+            progress.display(i + 1)
+            profiler.flush_to_execel()
         end = time.time()
-    
-    epoch_ststs = EpochMeasurment(
+
+    profiler.record_epoch_stats(EpochMeasurment(
         JobId=args.jobid,
         Epoch=epoch,
         NumBatches = i+1,
         NumFiles = total_files,
-        EpochTime = batch_time.sum,
+        TotalEpochTime = batch_time.sum,
         ImgsPerSec = total_files/batch_time.sum,
         BatchesPerSec = (i+1)/batch_time.sum,
-        TotalBatchFetchTime = data_fetch_time.sum,
-        TotalBatchPrepTime = data_prep_time.sum,
-        TotalTransferToGpuTime = transfer_to_gpu_time.sum,
-        TotalProcessingTime = processing_time.sum,  
+        DataFetchTime = data_fetch_time.sum,
+        DataPrepTime = data_prep_time.sum,
+        TransferToGpuTime = transfer_to_gpu_time.sum,
+        ProcessingTime = processing_time.sum,  
         Loss =losses.val,
         Acc1 =top1.val.item(),
         Acc5 =top5.val.item(),  
         AvgBatchTime = batch_time.avg,
-        AvgBatchFetchTime = data_fetch_time.avg,
-        AvgBatchPrepTime = data_prep_time.avg,
+        AvgDataFetchTime = data_fetch_time.avg,
+        AvgDataPrepTime = data_prep_time.avg,
         AvgTransferToGpuTime = transfer_to_gpu_time.avg,
         AvgProcessingTime = processing_time.avg,
         TotalCacheHits = total_cache_hits,
         TotaCacheMisses = total_cache_misses,
-        CacheHitPercentage = total_cache_hits/(total_cache_hits+total_cache_misses))
-    profiler.log_epoch_stats(epoch_ststs)
-
+        CacheHitPercentage = total_cache_hits/(total_cache_hits+total_cache_misses)))
+      
+    profiler.flush_to_execel()
 
 class AverageMeter(object):
     """Computes and stores the average and current value."""

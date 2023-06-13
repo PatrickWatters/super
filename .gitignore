@@ -2,3 +2,5 @@ server.log
 cache_load.log
 evaluation/
 reports/
+* .pyc
+__pycache__

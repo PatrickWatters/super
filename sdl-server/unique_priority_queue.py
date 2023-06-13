@@ -2,7 +2,6 @@ from queue import Queue
 import heapq
 from  batch import BatchGroup
 from threading import Thread
-from threading import Lock
 
 class UniquePriorityQueue(Queue):
 
@@ -60,23 +59,22 @@ class UniquePriorityQueue(Queue):
 
     def start_consumers(self, num_consumers=32):
         # create a shared lock
-        lock = Lock()
         for i in range(num_consumers):
             name = 'Consumer-{}'.format(i)
-            c = Thread(name=name,target=self.process_item, args=(lock,))
+            c = Thread(name=name,target=self.process_item, args=())
             c.start()
             self.consumers.append(c)
 
-    def process_item(self, lock):
+    def process_item(self,):
         while True:
             if not self.empty():
-                pri, item = self.get()
+                priority, item = self.get()
                 job_id, group_id, batch_id,action = item
+                batch_group:BatchGroup = self.batch_groups[group_id]
+                
                 if action == 'prefetch':
-                #print('prefetch')
-                 group:BatchGroup = self.batch_groups[group_id]
-                 group.prefetch_batch(batch_id,lock)
+                    batch_group.fetch_batch_via_lambda(batch_id, 
+                                            include_batch_data_in_response=False,
+                                            isPrefetch=True)
                 if action == 'ping':
-                 print('ping')
-                 group:BatchGroup = self.batch_groups[group_id]
-                 group.ping_batch_in_cache(batch_id)
+                    batch_group.keep_alive_batch_ping(batch_id, prefetch_on_cache_miss=True)

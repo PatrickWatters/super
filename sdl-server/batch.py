@@ -6,6 +6,7 @@ from misc.redis_client import RedisClient
 import time
 from threading import Lock
 
+
 class Batch():
     def __init__(self,id, group_id,indices,labelled_paths):
         self.batch_id = id
@@ -19,7 +20,7 @@ class Batch():
         self.inProgress = False
 
 class BatchGroup():
-    def __init__(self,group_id, batches, lambda_wrapper:LambdaWrapper, redis_client:RedisClient):
+    def __init__(self,group_id, batches, lambda_wrapper:LambdaWrapper, redis_client:RedisClient, use_lambda:bool = True):
         self.group_id = group_id
         self.batches:dict[str,Batch] = batches
         #self.priorityq = UniquePriorityQueue()
@@ -28,6 +29,7 @@ class BatchGroup():
         self.lambda_wrapper:LambdaWrapper =lambda_wrapper
         self.redis_client:RedisClient = redis_client
         self.lock = Lock()
+        self.use_lambda = use_lambda
 
     def batchIsInProgress(self,bacth_id):
         return self.batches[bacth_id].inProgress
@@ -60,82 +62,73 @@ class BatchGroup():
     def get_batch_indices(self,batch_id):
         return self.batches[batch_id].indices
     
-    
-    def prefetch_batch(self, batch_id):
-
-        if self.batchIsCached(batch_id) or self.batchIsInProgress(batch_id):
-            return
+    def fetch_batch_via_cache(self, batch_id):
+        batch_data = self.redis_client.get_data(batch_id)
         
-        self.setBatchIsInProgress(batch_id, True)
-
-        cache_after_retrevial = True
-        include_batch_data_in_response = False
-
-        response = self.lambda_wrapper.invoke_function(self.batches[batch_id].labelled_paths,batch_id,cache_after_retrevial,
-                                                        include_batch_data_in_response, False)
-        paylaod = json.load(response['Payload'])
-        
-        if 'errorMessage' in paylaod:
-            print(paylaod['errorMessage'])
-
-        elif paylaod['isCached'] == True:
-
-            self.setCachedSatus(batch_id, True)
-            self.setlastPingedTimestamp(batch_id)
-
-        elif self.redis_client.isLocal:
-            self.redis_client.set_data(batch_id,paylaod['batch_data'])
-            self.setCachedSatus(batch_id, True)
-            print('set to cached', batch_id)
-            self.setlastPingedTimestamp(batch_id)
-        
-        self.setBatchIsInProgress(batch_id, False)
-
-    def ping_batch_in_cache(self, batch_id):
-        cache_hit = False
-        response = self.redis_client.get_data(batch_id)
-        if response is not None:
-            self.setlastPingedTimestamp(batch_id)
-        else:
-            self.setCachedSatus(batch_id, False)
-        #else:
-        #    self.prefetch_batch(batch_id)
-
-    def fetch_data_via_s3(self,batch_id):
-
-        #add check here on whether to cache the batch or not
-        if len(self.batches[batch_id].processed_by) <=0:
-            cache_after_retrevial = True
-        else:
-            cache_after_retrevial = False
-
-        response = self.lambda_wrapper.invoke_function(self.batches[batch_id].labelled_paths,batch_id,cache_after_retrevial,
-                                                       True, False)
-        
-        paylaod = json.load(response['Payload'])
-        
-        if 'errorMessage' in paylaod:
-            print(paylaod['errorMessage'])
-        
-        elif paylaod['isCached']== True:
-            self.setCachedSatus(batch_id, True)
-            self.setlastPingedTimestamp(batch_id)
-        
-        elif self.redis_client.isLocal and cache_after_retrevial:
-            self.redis_client.set_data(batch_id,paylaod['batch_data'])
-            self.setCachedSatus(batch_id, True)
-            self.setlastPingedTimestamp(batch_id)
-               
-        return paylaod['batch_data']
-    
-    def fetch_data_via_cache(self,batch_id):
-        cache_hit = False
-        response = self.redis_client.get_data(batch_id)
-        if response is not None:
+        if batch_data is not None:
             self.setlastPingedTimestamp(batch_id)
             cache_hit = True
-        return response, cache_hit
+            return batch_data, cache_hit
+        else:
+            self.setCachedSatus(batch_id, False)
+            cache_hit = False
+            return batch_data, cache_hit
     
+    def fetch_batch_via_lambda(self, batch_id,include_batch_data_in_response = True, isPrefetch = False):
+
+        if isPrefetch:
+            cache_after_retrevial = True
+        else:
+            cache_after_retrevial = True
+
+        if self.use_lambda:
+            response = self.lambda_wrapper.invoke_function(labelled_paths=self.batches[batch_id].labelled_paths,
+                                                           batch_id=batch_id,
+                                                           cache_after_retrevial=cache_after_retrevial,
+                                                           include_batch_data_in_response= include_batch_data_in_response,
+                                                           get_log= False)
+        else:
+            response = self.lambda_wrapper.fetch_from_local_disk(labelled_paths=self.batches[batch_id].labelled_paths,
+                                                           batch_id=batch_id,
+                                                           cache_after_retrevial=cache_after_retrevial,
+                                                           include_batch_data_in_response= include_batch_data_in_response,
+                                                           get_log= False, redis_client=self.redis_client)
+        paylaod = json.loads(response['Payload'])
+        if 'errorMessage' in paylaod:
+            print(paylaod['errorMessage'])
+        
+        elif paylaod['isCached'] == True:
+            self.setCachedSatus(batch_id, True)
+            self.setlastPingedTimestamp(batch_id)
+
+        return paylaod['batch_data']
+    
+
+    def prefetch_batch(self, batch_id):
+        if self.batchIsCached(batch_id) or self.batchIsInProgress(batch_id):
+            return
+                    
+        self.setBatchIsInProgress(batch_id, True)
+
+        self.fetch_batch_via_lambda(batch_id=batch_id,
+                                    include_batch_data_in_response = False,
+                                    isPrefetch= True )
+        
+        self.setBatchIsInProgress(batch_id, False)
+    
+    
+    def keep_alive_batch_ping(self, batch_id, prefetch_on_cache_miss = False):
+        response = self.redis_client.get_data(batch_id)
+        if response is not None:
+            self.setlastPingedTimestamp(batch_id)
+        else:
+            #cache miss - data must have been evicted by AWS
+            self.setCachedSatus(batch_id, False)
+            if prefetch_on_cache_miss:
+                self.prefetch_batch(batch_id=batch_id)
+    
+    
+
     def find_subsitution_batch(self,job_id,next_batch_id):
         response = None
         cache_hit = False
@@ -150,4 +143,3 @@ class BatchGroup():
                     next_batch_id = batch_id
                     break
         return next_batch_id, response,cache_hit
-        
