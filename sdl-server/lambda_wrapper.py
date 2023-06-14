@@ -8,6 +8,7 @@ from PIL import Image
 import base64
 import io
 import pathlib
+import time
 
 class LambdaWrapper:
     def __init__(self,bucket_name,redis_host,redis_port, lambda_client=boto3.client('lambda'), iam_resource=boto3.resource('iam'),
@@ -41,6 +42,7 @@ class LambdaWrapper:
         return response
 
     def fetch_from_local_disk(self, labelled_paths, batch_id, cache_after_retrevial, include_batch_data_in_response = True, get_log=False,redis_client=None):
+        time.sleep(3.4) #simulation the time it would take to load from S3
         fun_params = {}
         fun_params['batch_metadata'] = labelled_paths
         fun_params['batch_id'] = batch_id
@@ -84,7 +86,9 @@ class LambdaWrapper:
         if not isCached or return_batch_data:
                 response_msg = {'batch_id': batch_id,'isCached': isCached,'batch_data':json_samples,'cache_error_message':cache_error_message}
         else:
-                response_msg = {'batch_id': batch_id,'isCached': isCached,'cache_error_message':cache_error_message}
+                response_msg = {'batch_id': batch_id,'isCached': isCached,'batch_data':json_samples,'cache_error_message':cache_error_message}
+
+                #response_msg = {'batch_id': batch_id,'isCached': isCached,'cache_error_message':cache_error_message}
         
         response['Payload'] = json.dumps(response_msg)
         return response

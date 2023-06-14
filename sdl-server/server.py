@@ -29,7 +29,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self.global_batch_group_idx = 0
         self.global_queue = UniquePriorityQueue()
         self.global_queue.set_groups(self.batch_groups)
-        #self.global_queue.start_consumers()
+        self.global_queue.start_consumers()
         self._read_config()
         self._check_environment()
         self.lambda_wrapper = LambdaWrapper(self.bucket_name, self.redis_host, self.redis_port,function_name=self.lambda_func_name)

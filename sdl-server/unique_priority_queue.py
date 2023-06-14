@@ -61,7 +61,7 @@ class UniquePriorityQueue(Queue):
         # create a shared lock
         for i in range(num_consumers):
             name = 'Consumer-{}'.format(i)
-            c = Thread(name=name,target=self.process_item, args=())
+            c = Thread(name=name,target=self.process_item, args=(),daemon=True)
             c.start()
             self.consumers.append(c)
 
