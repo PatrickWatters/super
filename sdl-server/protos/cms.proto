@@ -19,7 +19,10 @@ message JobEndedMessage{
 message GetNextBatchForJobMessage{
   int32  job_id = 1;
   float avg_training_speed =2;
-  float prev_batch_dl_delay = 3;
+  //float prev_batch_dl_delay = 3;
+  float avg_delay_on_miss = 3;
+  float avg_delay_on_hit = 4;
+
 }
 
 message RegisterTrainingJobMessage{

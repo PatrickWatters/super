@@ -5,7 +5,7 @@ import json
 from misc.redis_client import RedisClient
 import time
 from threading import Lock
-
+import logging
 
 class Batch():
     def __init__(self,id, group_id,indices,labelled_paths):
@@ -73,13 +73,16 @@ class BatchGroup():
             self.setCachedSatus(batch_id, False)
             cache_hit = False
             return batch_data, cache_hit
-    
-    def fetch_batch_via_lambda(self, batch_id,include_batch_data_in_response = True, isPrefetch = False):
-
+        
+    def fetch_batch_via_lambda(self, batch_id,include_batch_data_in_response = True, isPrefetch = False,cache_after_retrevial = True ):
+        
         if isPrefetch:
             cache_after_retrevial = True
-        else:
-            cache_after_retrevial = True
+        
+        if cache_after_retrevial:
+            self.setBatchIsInProgress(batch_id, True)
+
+        logging.info("{} fetching from L2. Is Prefecth: {}".format(batch_id, isPrefetch))
 
         if self.use_lambda:
             response = self.lambda_wrapper.invoke_function(labelled_paths=self.batches[batch_id].labelled_paths,
@@ -100,22 +103,10 @@ class BatchGroup():
         elif paylaod['isCached'] == True:
             self.setCachedSatus(batch_id, True)
             self.setlastPingedTimestamp(batch_id)
+            logging.info("{} cached".format(batch_id))
 
-        return paylaod['batch_data']
-    
-
-    def prefetch_batch(self, batch_id):
-        if self.batchIsCached(batch_id) or self.batchIsInProgress(batch_id):
-            return
-                    
-        self.setBatchIsInProgress(batch_id, True)
-
-        self.fetch_batch_via_lambda(batch_id=batch_id,
-                                    include_batch_data_in_response = False,
-                                    isPrefetch= True )
-        
         self.setBatchIsInProgress(batch_id, False)
-    
+        return paylaod['batch_data']
     
     def keep_alive_batch_ping(self, batch_id, prefetch_on_cache_miss = False):
         response = self.redis_client.get_data(batch_id)
@@ -125,8 +116,10 @@ class BatchGroup():
             #cache miss - data must have been evicted by AWS
             self.setCachedSatus(batch_id, False)
             if prefetch_on_cache_miss:
-                self.prefetch_batch(batch_id=batch_id)
-    
+                if self.batchIsCached(batch_id) == False and self.batchIsInProgress(batch_id) == False:
+                     self.fetch_batch_via_lambda(batch_id, 
+                                            include_batch_data_in_response=False,
+                                            isPrefetch=True)
     
 
     def find_subsitution_batch(self,job_id,next_batch_id):

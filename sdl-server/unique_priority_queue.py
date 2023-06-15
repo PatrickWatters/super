@@ -2,6 +2,7 @@ from queue import Queue
 import heapq
 from  batch import BatchGroup
 from threading import Thread
+import logging
 
 class UniquePriorityQueue(Queue):
 
@@ -20,12 +21,14 @@ class UniquePriorityQueue(Queue):
             previous_item = self.entry_finder[batch_id]
             previous_job_id = previous_item[1][0]
             previous_priority, _ = previous_item
-
-            if priority > previous_priority and previous_job_id == job_id: #if same job  always update the access time!
+            
+            #if same job always update the access time!
+            #if priority > previous_priority and previous_job_id == job_id:
+            if previous_job_id == job_id:
                 previous_item[-1] = self.REMOVED
                 self.entry_finder[batch_id] = item
                 heappush(self.queue, item)
-                print('batch_queud', batch_id)
+                #logging.info("{} queud with priority {}".format(batch_id, priority))
 
             elif priority < previous_priority: #if a different job but a higher priorty access time - update!
                 # Remove previous item
@@ -39,7 +42,8 @@ class UniquePriorityQueue(Queue):
         else:
             self.entry_finder[batch_id] = item
             heappush(self.queue, item)
-            print('batch_queud', batch_id)
+            #logging.info("{} queud with priority {}".format(batch_id, priority))
+
 
     def _qsize(self, len=len):
         return len(self.entry_finder)
@@ -54,9 +58,6 @@ class UniquePriorityQueue(Queue):
                 return item
         raise KeyError('It should never happen: pop from an empty priority queue')
     
-    def set_groups(self, g):
-        self.batch_groups = g
-
     def start_consumers(self, num_consumers=32):
         # create a shared lock
         for i in range(num_consumers):
@@ -73,7 +74,8 @@ class UniquePriorityQueue(Queue):
                 batch_group:BatchGroup = self.batch_groups[group_id]
                 
                 if action == 'prefetch':
-                    batch_group.fetch_batch_via_lambda(batch_id, 
+                 if batch_group.batchIsCached(batch_id) == False and batch_group.batchIsInProgress(batch_id) == False:
+                     batch_group.fetch_batch_via_lambda(batch_id, 
                                             include_batch_data_in_response=False,
                                             isPrefetch=True)
                 if action == 'ping':

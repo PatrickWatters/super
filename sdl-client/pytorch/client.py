@@ -13,17 +13,23 @@ class CMSClient(object):
         self.server_port = 50052
         self.job_avg_training_speed =0
         self.prev_batch_dl_delay =0
-
-        # instantiate a channel
+        self.avg_delay_on_miss = 0
+        self.avg_delay_on_hit = 0.08
+        # instantiate a channe
         self.channel = grpc.insecure_channel(
             '{}:{}'.format(self.host, self.server_port))
 
         # bind the client and the server
         self.stub = pb2_grpc.CacheManagementServiceStub(self.channel)
 
-    def record_training_stats(self, avg_speed, dl_delay):
+    def record_training_stats(self, avg_speed, dl_delay, cache_hit):
+
+        if cache_hit:
+            self.avg_delay_on_hit = dl_delay
+        else:
+            self.avg_delay_on_miss = dl_delay
         self.job_avg_training_speed = avg_speed
-        self.prev_batch_dl_delay = dl_delay
+        #self.prev_batch_dl_delay = dl_delay
     
     def job_ended_nofifcation(self,job_id):
    
@@ -48,7 +54,7 @@ class CMSClient(object):
         """
         Client function to get next batch for ML training job
         """
-        messageRequest = pb2.GetNextBatchForJobMessage(job_id=job_id,avg_training_speed =self.job_avg_training_speed, prev_batch_dl_delay = self.prev_batch_dl_delay)
+        messageRequest = pb2.GetNextBatchForJobMessage(job_id=job_id,avg_training_speed =self.job_avg_training_speed, avg_delay_on_miss=self.avg_delay_on_miss, avg_delay_on_hit = self.avg_delay_on_hit)
         response = self.stub.GetNextBatchForJob(messageRequest)
         return  (response.batch_id, json.loads(response.batch_metadata), response.isCached, response.batch_data)
     

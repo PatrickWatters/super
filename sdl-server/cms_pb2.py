@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\tcms.proto\x12\x03\x63ms\"!\n\x0fJobEndedMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\"d\n\x19GetNextBatchForJobMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\x12\x1a\n\x12\x61vg_training_speed\x18\x02 \x01(\x02\x12\x1b\n\x13prev_batch_dl_delay\x18\x03 \x01(\x02\"@\n\x1aRegisterTrainingJobMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\"\x1a\n\x07Message\x12\x0f\n\x07message\x18\x01 \x01(\t\"l\n\x1aGetNextBatchForJobResponse\x12\x10\n\x08\x62\x61tch_id\x18\x01 \x01(\t\x12\x16\n\x0e\x62\x61tch_metadata\x18\x02 \x01(\t\x12\x10\n\x08isCached\x18\x03 \x01(\x08\x12\x12\n\nbatch_data\x18\x04 \x01(\t\"n\n\x1bRegisterTrainingJobResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07\x64\x61taset\x18\x02 \x01(\t\x12\x12\n\nregistered\x18\x03 \x01(\x08\x12\x19\n\x11\x62\x61tches_per_epoch\x18\x04 \x01(\x05\"4\n\x0fMessageResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x10\n\x08received\x18\x02 \x01(\x08\x32\xd3\x02\n\x16\x43\x61\x63heManagementService\x12\x46\n\x16ProcessJobEndedMessage\x12\x14.cms.JobEndedMessage\x1a\x14.cms.MessageResponse\"\x00\x12W\n\x12GetNextBatchForJob\x12\x1e.cms.GetNextBatchForJobMessage\x1a\x1f.cms.GetNextBatchForJobResponse\"\x00\x12]\n\x16RegisterNewTrainingJob\x12\x1f.cms.RegisterTrainingJobMessage\x1a .cms.RegisterTrainingJobResponse\"\x00\x12\x39\n\x11GetServerResponse\x12\x0c.cms.Message\x1a\x14.cms.MessageResponse\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\tcms.proto\x12\x03\x63ms\"!\n\x0fJobEndedMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\"|\n\x19GetNextBatchForJobMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\x12\x1a\n\x12\x61vg_training_speed\x18\x02 \x01(\x02\x12\x19\n\x11\x61vg_delay_on_miss\x18\x03 \x01(\x02\x12\x18\n\x10\x61vg_delay_on_hit\x18\x04 \x01(\x02\"@\n\x1aRegisterTrainingJobMessage\x12\x0e\n\x06job_id\x18\x01 \x01(\x05\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\"\x1a\n\x07Message\x12\x0f\n\x07message\x18\x01 \x01(\t\"l\n\x1aGetNextBatchForJobResponse\x12\x10\n\x08\x62\x61tch_id\x18\x01 \x01(\t\x12\x16\n\x0e\x62\x61tch_metadata\x18\x02 \x01(\t\x12\x10\n\x08isCached\x18\x03 \x01(\x08\x12\x12\n\nbatch_data\x18\x04 \x01(\t\"n\n\x1bRegisterTrainingJobResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07\x64\x61taset\x18\x02 \x01(\t\x12\x12\n\nregistered\x18\x03 \x01(\x08\x12\x19\n\x11\x62\x61tches_per_epoch\x18\x04 \x01(\x05\"4\n\x0fMessageResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x10\n\x08received\x18\x02 \x01(\x08\x32\xd3\x02\n\x16\x43\x61\x63heManagementService\x12\x46\n\x16ProcessJobEndedMessage\x12\x14.cms.JobEndedMessage\x1a\x14.cms.MessageResponse\"\x00\x12W\n\x12GetNextBatchForJob\x12\x1e.cms.GetNextBatchForJobMessage\x1a\x1f.cms.GetNextBatchForJobResponse\"\x00\x12]\n\x16RegisterNewTrainingJob\x12\x1f.cms.RegisterTrainingJobMessage\x1a .cms.RegisterTrainingJobResponse\"\x00\x12\x39\n\x11GetServerResponse\x12\x0c.cms.Message\x1a\x14.cms.MessageResponse\"\x00\x62\x06proto3'
 )
 
 
@@ -80,8 +80,15 @@ _GETNEXTBATCHFORJOBMESSAGE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='prev_batch_dl_delay', full_name='cms.GetNextBatchForJobMessage.prev_batch_dl_delay', index=2,
+      name='avg_delay_on_miss', full_name='cms.GetNextBatchForJobMessage.avg_delay_on_miss', index=2,
       number=3, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='avg_delay_on_hit', full_name='cms.GetNextBatchForJobMessage.avg_delay_on_hit', index=3,
+      number=4, type=2, cpp_type=6, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -99,7 +106,7 @@ _GETNEXTBATCHFORJOBMESSAGE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=53,
-  serialized_end=153,
+  serialized_end=177,
 )
 
 
@@ -137,8 +144,8 @@ _REGISTERTRAININGJOBMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=155,
-  serialized_end=219,
+  serialized_start=179,
+  serialized_end=243,
 )
 
 
@@ -169,8 +176,8 @@ _MESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=221,
-  serialized_end=247,
+  serialized_start=245,
+  serialized_end=271,
 )
 
 
@@ -222,8 +229,8 @@ _GETNEXTBATCHFORJOBRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=249,
-  serialized_end=357,
+  serialized_start=273,
+  serialized_end=381,
 )
 
 
@@ -275,8 +282,8 @@ _REGISTERTRAININGJOBRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=359,
-  serialized_end=469,
+  serialized_start=383,
+  serialized_end=493,
 )
 
 
@@ -314,8 +321,8 @@ _MESSAGERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=471,
-  serialized_end=523,
+  serialized_start=495,
+  serialized_end=547,
 )
 
 DESCRIPTOR.message_types_by_name['JobEndedMessage'] = _JOBENDEDMESSAGE
@@ -385,8 +392,8 @@ _CACHEMANAGEMENTSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=526,
-  serialized_end=865,
+  serialized_start=550,
+  serialized_end=889,
   methods=[
   _descriptor.MethodDescriptor(
     name='ProcessJobEndedMessage',

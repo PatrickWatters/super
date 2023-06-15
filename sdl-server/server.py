@@ -12,13 +12,8 @@ import logging
 import json
 from batch import BatchGroup
 from unique_priority_queue import UniquePriorityQueue
-import time
-import threading
-from batch import Batch
 from lambda_wrapper import LambdaWrapper
 from misc.redis_client import RedisClient
-
-logging.basicConfig(format='%(asctime)s - %(message)s',filename='server.log', encoding='utf-8', level=logging.INFO)
 
 class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
 
@@ -28,15 +23,19 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self.active_training_jobs = {}
         self.global_batch_group_idx = 0
         self.global_queue = UniquePriorityQueue()
-        self.global_queue.set_groups(self.batch_groups)
-        self.global_queue.start_consumers()
+        self.global_queue.batch_groups = self.batch_groups
+        self.global_queue.start_consumers(num_consumers=0)
         self._read_config()
         self._check_environment()
         self.lambda_wrapper = LambdaWrapper(self.bucket_name, self.redis_host, self.redis_port,function_name=self.lambda_func_name)
         self.redis_client:RedisClient = RedisClient(self.redis_host,self.redis_port)
         self._gen_new_group_of_batches() #create an initial set of batches
+        logging.basicConfig(filename='super.log', encoding='utf-8', level=logging.INFO, 
+                            format='%(asctime)s\t%(levelname)s\t%(message)s')
+
 
         pass
+
 
     def _read_config(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -102,9 +101,11 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
     def GetNextBatchForJob(self,request, context):
         training_job:MLTrainingJob = self.active_training_jobs[request.job_id]
         training_job.set_avg_training_speed(request.avg_training_speed)
-        training_job.update_data_laoding_delay(request.prev_batch_dl_delay)
-        #training_job.increment_batches_processed()
-
+        #training_job.avg_speed_on_miss = request.prev_batch_dl_delay
+        training_job.avg_delay_on_hit = request.avg_delay_on_hit
+        training_job.avg_delay_on_miss = request.avg_delay_on_miss
+        #training_job.update_data_laoding_delay(request.prev_batch_dl_delay)
+        
         if len(training_job.currEpoch_remainingBatches) < 1: #batches exhausted, starting a new epoch
             self._assign_new_batches_to_job_for_epoch(training_job)
             training_job.reset_epoch_timer()
@@ -113,7 +114,8 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         next_batch_id, cache_hit, batch_data, next_batch_incides = training_job.find_next_batch()
         
         result = {'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_incides), 'isCached': cache_hit,'batch_data': batch_data}
-        logging.info({'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_incides), 'isCached': cache_hit})
+        #logging.info({'batch_id': str(next_batch_id),'batch_metadata': json.dumps(next_batch_incides), 'isCached': cache_hit})
+        #logging.info("{} given to job {}. Hit = {}".format(next_batch_id, request.job_id, cache_hit))
         return pb2.GetNextBatchForJobResponse(**result)
     
     def _assign_new_batches_to_job_for_epoch(self,training_job:MLTrainingJob):

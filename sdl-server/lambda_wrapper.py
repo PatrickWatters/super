@@ -10,6 +10,19 @@ import io
 import pathlib
 import time
 
+def timer_func(func):
+    # This function shows the execution time of 
+    # the function object passed
+    def wrap_func(*args, **kwargs):
+        t1 = time()
+        result = func(*args, **kwargs)
+        t2 = time()
+        print(f'Function {func.__name__!r} executed in {(t2-t1):.4f}s')
+        return result
+    return wrap_func
+  
+
+
 class LambdaWrapper:
     def __init__(self,bucket_name,redis_host,redis_port, lambda_client=boto3.client('lambda'), iam_resource=boto3.resource('iam'),
                  function_name='lambda_dataloader'):
@@ -40,9 +53,9 @@ class LambdaWrapper:
             logger.exception("Couldn't invoke function %s.", self.function_name)
             raise
         return response
-
+    
     def fetch_from_local_disk(self, labelled_paths, batch_id, cache_after_retrevial, include_batch_data_in_response = True, get_log=False,redis_client=None):
-        time.sleep(3.4) #simulation the time it would take to load from S3
+        time.sleep(2) #simulation the time it would take to load from S3
         fun_params = {}
         fun_params['batch_metadata'] = labelled_paths
         fun_params['batch_id'] = batch_id

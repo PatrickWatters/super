@@ -74,8 +74,7 @@ class Dataset():
         return s[len(prefix) :]
     
     def generate_set_of_batches(self,seed:int):
-        setOfbatches={}
-        
+        setOfbatches={}      
         if self.use_random_sampling:
             base_sampler = RandomSampler(self)
         else:
