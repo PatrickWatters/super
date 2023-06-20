@@ -3,7 +3,7 @@ import heapq
 from  batch import BatchGroup
 from threading import Thread
 import logging
-
+import time
 class UniquePriorityQueue(Queue):
 
     def _init(self, maxsize):
@@ -71,12 +71,13 @@ class UniquePriorityQueue(Queue):
             if not self.empty():
                 priority, item = self.get()
                 job_id, group_id, batch_id,action = item
-                batch_group:BatchGroup = self.batch_groups[group_id]
-                
+                batch_group:BatchGroup = self.batch_groups[group_id]   
+
                 if action == 'prefetch':
-                 if batch_group.batchIsCached(batch_id) == False and batch_group.batchIsInProgress(batch_id) == False:
-                     batch_group.fetch_batch_via_lambda(batch_id, 
+                    if not batch_group.batchIsCached(batch_id) and not batch_group.batchIsInProgress(batch_id):
+                        time.sleep(3)
+                        batch_group.fetch_batch_via_lambda(batch_id, 
                                             include_batch_data_in_response=False,
                                             isPrefetch=True)
-                if action == 'ping':
-                    batch_group.keep_alive_batch_ping(batch_id, prefetch_on_cache_miss=True)
+                #if action == 'ping':
+                #    batch_group.keep_alive_batch_ping(batch_id, prefetch_on_cache_miss=True)

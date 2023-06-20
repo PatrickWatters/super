@@ -4,3 +4,5 @@ evaluation/
 reports/
 * .pyc
 __pycache__
+super.log
+sdl-server/super.log

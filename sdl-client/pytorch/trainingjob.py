@@ -40,11 +40,11 @@ parser = argparse.ArgumentParser(description="PyTorch Training")
 parser.add_argument("-a","--arch",metavar="ARCH",default="resnet18",choices=model_names,help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",)
 parser.add_argument("-j", "--num-workers", default=0, type=int, metavar="N", help="number of data loading workers (default: 4)")
 parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="manual epoch number (useful on restarts)")
-parser.add_argument("-epochs","--epochs", default=2, type=int, metavar="N", help="number of total epochs to run")  # default 90
+parser.add_argument("-epochs","--epochs", default=4, type=int, metavar="N", help="number of total epochs to run")  # default 90
 parser.add_argument("--lr", "--learning-rate", default=0.1, type=float, metavar="LR", help="initial learning rate", dest="lr")
 parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
 parser.add_argument("--wd","--weight-decay",default=1e-4,type=float,metavar="W",help="weight decay (default: 1e-4)",dest="weight_decay",)
-parser.add_argument("-p", "--print-freq", default=10000, type=int, metavar="N", help="print frequency (default: 1)")
+parser.add_argument("-p", "--print-freq", default=1, type=int, metavar="N", help="print frequency (default: 1)")
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument("--batch-size", type=int, default=256)
 parser.add_argument("--pin-memory", type=int, default=0)
@@ -131,6 +131,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device,client:C
     total_cache_misses = 0
     total_files = 0
     batch_time = AverageMeter("TotalTime", ":6.3f")
+    total_data_load_time = AverageMeter("DataLoad", ":6.3f")
     data_prep_time = AverageMeter("Prep", ":6.3f")
     data_fetch_time = AverageMeter("Fetch", ":6.3f")
     transfer_to_gpu_time = AverageMeter("Transfer", ":6.3f")
@@ -150,11 +151,11 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device,client:C
 
     for i, (images, labels,batch_id, cache_hit, prep_time) in enumerate(train_loader):
 
-        print("{},{},{}".format(batch_id, batch_time.sum,datetime.datetime.now()))
+        #print("{},{}".format(batch_id,datetime.datetime.now()))
 
         # measure data loading time
-        #data_fetch_time.update((time.time() - end)-prep_time)
-        data_fetch_time.update((time.time() - end))
+        total_data_load_time.update((time.time() - end))
+        data_fetch_time.update((time.time() - end)-prep_time)
         data_prep_time.update(prep_time)
         total_files += len(images)
 
@@ -208,9 +209,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device,client:C
             CacheHit = cache_hit))
         
         if i % args.print_freq == 0:
-            #progress.display(i + 1)
+            progress.display(i + 1)
             profiler.flush_to_execel()
-        client.record_training_stats(processing_time.avg, data_fetch_time.avg, cache_hit)
+        client.record_training_stats(processing_time.avg, total_data_load_time.avg, cache_hit)
         end = time.time()
 
     profiler.record_epoch_stats(EpochMeasurment(

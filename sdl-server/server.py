@@ -24,7 +24,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self.global_batch_group_idx = 0
         self.global_queue = UniquePriorityQueue()
         self.global_queue.batch_groups = self.batch_groups
-        self.global_queue.start_consumers(num_consumers=0)
+        self.global_queue.start_consumers(num_consumers=32)
         self._read_config()
         self._check_environment()
         self.lambda_wrapper = LambdaWrapper(self.bucket_name, self.redis_host, self.redis_port,function_name=self.lambda_func_name)
@@ -32,8 +32,6 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self._gen_new_group_of_batches() #create an initial set of batches
         logging.basicConfig(filename='super.log', encoding='utf-8', level=logging.INFO, 
                             format='%(asctime)s\t%(levelname)s\t%(message)s')
-
-
         pass
 
 
@@ -108,7 +106,6 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         
         if len(training_job.currEpoch_remainingBatches) < 1: #batches exhausted, starting a new epoch
             self._assign_new_batches_to_job_for_epoch(training_job)
-            training_job.reset_epoch_timer()
             training_job.reset_dl_delay()
 
         next_batch_id, cache_hit, batch_data, next_batch_incides = training_job.find_next_batch()
