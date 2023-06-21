@@ -8,6 +8,7 @@ from PIL import Image
 import base64
 import io
 import pathlib
+import time
 
 class LambdaWrapper:
     def __init__(self,bucket_name,redis_host,redis_port, lambda_client=boto3.client('lambda'), iam_resource=boto3.resource('iam'),
@@ -40,7 +41,8 @@ class LambdaWrapper:
             raise
         return response
   
-    def fetch_from_local_disk(self, labelled_paths, batch_id, cache_after_retrevial, include_batch_data_in_response = True, get_log=False,redis_client=None):
+    def fetch_from_local_disk(self, labelled_paths, batch_id, cache_after_retrevial, include_batch_data_in_response = True, get_log=False,redis_client=None,from_main = False ):
+        
         #simulation the time it would take to load from S3
         fun_params = {}
         fun_params['batch_metadata'] = labelled_paths
@@ -58,19 +60,29 @@ class LambdaWrapper:
         cache_bacth= fun_params['cache_bacth'] 
         return_batch_data= fun_params['return_batch_data'] 
         bucket_name=fun_params['bucket']
-
+        encode_time = 0
+        open_time = 0
+        save_time = 0
+        end = time.time()
         for path, label in batch_metadata:        
             path = "/Users/patrickwatters/Projects/datasets/{}/{}".format(bucket_name, path)
-            file_extension = pathlib.Path(path).suffix.replace('.','')
-            
+            file_extension = pathlib.Path(path).suffix.replace('.','')      
+            oend = time.time()
             img = Image.open(path)
+            open_time += (time.time() - oend)
             if img.mode == "L":
                     img = img.convert("RGB")
             img_byte_arr = io.BytesIO()
+            send = time.time()
             img.save(img_byte_arr, format=file_extension)
+            save_time += (time.time() - send)
+            dend = time.time()
             base_64_encoded_img = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+            encode_time += (time.time() - dend)
             samples.append((base_64_encoded_img, label))
-        
+
+        logging.info("Image loading:{}, Open:{}, Save:{}, Ecode:{}".format(time.time() - end,open_time,save_time,encode_time))
+
         json_samples = json.dumps(samples) 
         isCached = False
 
@@ -90,6 +102,7 @@ class LambdaWrapper:
                 #response_msg = {'batch_id': batch_id,'isCached': isCached,'cache_error_message':cache_error_message}
         
         response['Payload'] = json.dumps(response_msg)
+        
         return response
     '''
     

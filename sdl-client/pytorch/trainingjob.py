@@ -13,11 +13,10 @@ from client import CMSClient
 from sdl_dataset import SDLDataset
 from  data_objects import BatchMeasurment, EpochMeasurment
 from profiler import TrainingProfiler
-import random
-import datetime
+
 class SDLSampler():
 
-    def __init__(self,job_id, num_batches,sdl_client:CMSClient, ):        
+    def __init__(self,job_id, num_batches,sdl_client:CMSClient,):        
         self.num_batches = num_batches
         self.sdl_client = sdl_client
         self.job_id = job_id
@@ -38,9 +37,9 @@ class SDLSampler():
 model_names = sorted(name for name in models.__dict__ if name.islower() and not name.startswith("__") and callable(models.__dict__[name]))
 parser = argparse.ArgumentParser(description="PyTorch Training")
 parser.add_argument("-a","--arch",metavar="ARCH",default="resnet18",choices=model_names,help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",)
-parser.add_argument("-j", "--num-workers", default=0, type=int, metavar="N", help="number of data loading workers (default: 4)")
+parser.add_argument("-j", "--num-workers", default=4, type=int, metavar="N", help="number of data loading workers (default: 4)")
 parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="manual epoch number (useful on restarts)")
-parser.add_argument("-epochs","--epochs", default=4, type=int, metavar="N", help="number of total epochs to run")  # default 90
+parser.add_argument("-epochs","--epochs", default=1, type=int, metavar="N", help="number of total epochs to run")  # default 90
 parser.add_argument("--lr", "--learning-rate", default=0.1, type=float, metavar="LR", help="initial learning rate", dest="lr")
 parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
 parser.add_argument("--wd","--weight-decay",default=1e-4,type=float,metavar="W",help="weight decay (default: 1e-4)",dest="weight_decay",)
@@ -103,8 +102,8 @@ def main():
     if not successfully_registered:
         exit()
         
-    train_dataset = SDLDataset(job_id=args.jobid, blob_classes=labelled_dataset,client=client, transform=transform, target_transform=None)
-    sdl_sampler = SDLSampler(job_id=args.jobid, num_batches=batches_per_epoch, sdl_client =client)
+    train_dataset = SDLDataset(job_id=args.jobid, blob_classes=labelled_dataset,transform=transform, target_transform=None)
+    sdl_sampler = SDLSampler(job_id=args.jobid, num_batches=batches_per_epoch, sdl_client=client)
 
     train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=None, 
                                                num_workers=args.num_workers, 
@@ -141,7 +140,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device,client:C
     top5 = AverageMeter("Acc@5", ":6.2f")
 
     progress = ProgressMeter(
-        len(train_loader), [batch_time, data_fetch_time,data_prep_time, transfer_to_gpu_time,processing_time, losses, top1], prefix="Epoch: [{}]".format(epoch)
+        len(train_loader), [batch_time, total_data_load_time, transfer_to_gpu_time,processing_time, losses, top1], prefix="Epoch: [{}]".format(epoch)
     )
 
     # switch to train mode

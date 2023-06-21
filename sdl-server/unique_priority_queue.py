@@ -24,7 +24,7 @@ class UniquePriorityQueue(Queue):
             
             #if same job always update the access time!
             #if priority > previous_priority and previous_job_id == job_id:
-            if previous_job_id == job_id:
+            if previous_job_id == job_id and priority != previous_priority:
                 previous_item[-1] = self.REMOVED
                 self.entry_finder[batch_id] = item
                 heappush(self.queue, item)
@@ -81,3 +81,16 @@ class UniquePriorityQueue(Queue):
                                             isPrefetch=True)
                 #if action == 'ping':
                 #    batch_group.keep_alive_batch_ping(batch_id, prefetch_on_cache_miss=True)
+
+if __name__ == '__main__':
+    #add
+    global_queue = UniquePriorityQueue()
+    global_queue.put((1,('job1',1,123456,'preftech')))
+    global_queue.put((1,('job1',1,123456,'preftech')))
+    global_queue.put((0.5,('job1',1,123456,'preftech')))
+    global_queue.put((0.2,('job2',1,123456,'preftech')))
+
+    #get
+    priority, item = global_queue.get()
+
+    assert()

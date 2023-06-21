@@ -13,13 +13,12 @@ import time
 redis_client = RedisClient('local')
 
 class SDLDataset(Dataset):
-    def __init__(self,job_id:int,blob_classes:dict,client:CMSClient, transform:Optional[Callable] =None,target_transform:Optional[Callable]=None):
+    def __init__(self,job_id:int,blob_classes:dict, transform:Optional[Callable] =None,target_transform:Optional[Callable]=None):
         self.transform = transform
         self.target_transform = target_transform
         self._blob_classes = blob_classes
         self.job_id = job_id
         self.length = sum(len(class_items) for class_items in self._blob_classes.values())
-        self.sdl_cleint = client
     
     @functools.cached_property
     def _classed_items(self) -> List[Tuple[str, int]]:

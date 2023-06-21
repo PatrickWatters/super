@@ -48,7 +48,7 @@ class MLTrainingJob():
             if not self.currEpoch_batchGroup.batchIsCached(batch_id) and not self.currEpoch_batchGroup.batchIsInProgress(batch_id) :
                 self.global_priority_queue.put((predicted_time,(self.job_id, self.currEpoch_batchGroup.group_id, batch_id, 'prefetch')))
         
-            logging.info("{}:{},{} = ({} * {}) + ({}) - ({}) ".format(batch_id, predicted_time, datetime.datetime.now() + datetime.timedelta(seconds=predicted_time),  self.currEpoch_batchesProcessed+(idx+1),
+            logging.debug("{}:{},{} = ({} * {}) + ({}) - ({}) ".format(batch_id, predicted_time, datetime.datetime.now() + datetime.timedelta(seconds=predicted_time),  self.currEpoch_batchesProcessed+(idx+1),
                                                         self.avg_training_speed,self.currEpoch_laoding_delay, self.progress))
             
             #else:
@@ -83,7 +83,7 @@ class MLTrainingJob():
     
     def update_data_laoding_delay(self,delay):
         self.currEpoch_laoding_delay += delay
-        logging.info("total epoch delay:{}, avg tarining time {}, avg miss delay {}".
+        logging.debug("total epoch delay:{}, avg tarining time {}, avg miss delay {}".
                      format(self.currEpoch_laoding_delay,self.avg_training_speed, self.avg_delay_on_miss))
 
     def reset_dl_delay(self):
@@ -108,8 +108,8 @@ class MLTrainingJob():
         if self.currEpoch_batchGroup.batchIsCached(next_batch_id):
             batch_data,cache_hit = self.currEpoch_batchGroup.fetch_batch_via_cache(batch_id=next_batch_id)
             self.update_data_laoding_delay(self.avg_delay_on_hit)
-            #self.executor.submit(self.run_batch_access_time_prediction) # does not block
-            self.run_batch_access_time_prediction()
+            self.executor.submit(self.run_batch_access_time_prediction) # does not block
+            #self.run_batch_access_time_prediction()
         
         #check if batch is currently being pre-fetched by another job or prefetchers
         if self.currEpoch_batchGroup.batchIsInProgress(next_batch_id):
@@ -119,15 +119,15 @@ class MLTrainingJob():
             batch_data,cache_hit = self.currEpoch_batchGroup.fetch_batch_via_cache(batch_id=next_batch_id)
             #cache_hit = False #changing to false because we had to wait around for the data to be put into the cache
             self.update_data_laoding_delay(time.time() - end)
-            #self.executor.submit(self.run_batch_access_time_prediction) # does not block
-            self.run_batch_access_time_prediction()
+            self.executor.submit(self.run_batch_access_time_prediction) # does not block
+            #self.run_batch_access_time_prediction()
         
         if batch_data is None: #complete cache miss
             #register a delay here and update access times?       
             self.update_data_laoding_delay(self.avg_delay_on_miss)
-            #self.executor.submit(self.run_batch_access_time_prediction) # does not block
+            self.executor.submit(self.run_batch_access_time_prediction) # does not block
      
-            self.run_batch_access_time_prediction()
+            #self.run_batch_access_time_prediction()
 
             time.sleep(3)
             batch_data = self.currEpoch_batchGroup.fetch_batch_via_lambda(batch_id=next_batch_id,

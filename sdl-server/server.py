@@ -32,6 +32,11 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self._gen_new_group_of_batches() #create an initial set of batches
         logging.basicConfig(filename='super.log', encoding='utf-8', level=logging.INFO, 
                             format='%(asctime)s\t%(levelname)s\t%(message)s')
+        #queue up the first few batches for the first job first epoch
+        firstset =  self.batch_groups[self.global_batch_group_idx].get_batch_ids()
+        for i in range(0, self.warm_up_distance):
+            batch_id = firstset[i]
+            self.global_queue.put((100,(1000, self.global_batch_group_idx, batch_id, 'prefetch')))
         pass
 
 
@@ -75,6 +80,7 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         new_batches = self.train_dataset.generate_set_of_batches(self.global_batch_group_idx)
         self.batch_groups[self.global_batch_group_idx] = BatchGroup(self.global_batch_group_idx,new_batches,self.lambda_wrapper,self.redis_client, self.use_lambda)
 
+    
     def RegisterNewTrainingJob(self, request, context):
         job_id = request.job_id
         batch_size = request.batch_size 

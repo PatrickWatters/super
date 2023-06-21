@@ -82,7 +82,7 @@ class BatchGroup():
         if cache_after_retrevial:
             self.setBatchIsInProgress(batch_id, True)
 
-        logging.info("{} fetching from L2. Is Prefecth: {}".format(batch_id, isPrefetch))
+        logging.debug("{} fetching from L2. Is Prefecth: {}".format(batch_id, isPrefetch))
 
         if self.use_lambda:
             response = self.lambda_wrapper.invoke_function(labelled_paths=self.batches[batch_id].labelled_paths,
@@ -103,7 +103,7 @@ class BatchGroup():
         elif paylaod['isCached'] == True:
             self.setCachedSatus(batch_id, True)
             self.setlastPingedTimestamp(batch_id)
-            logging.info("{} cached".format(batch_id))
+            logging.debug("{} ".format(batch_id))
 
         self.setBatchIsInProgress(batch_id, False)
         return paylaod['batch_data']
