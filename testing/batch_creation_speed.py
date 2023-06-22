@@ -9,7 +9,38 @@ from typing import (Any,Callable,Optional,Dict,List,Tuple,TypeVar,Union,Iterable
 import json
 import boto3
 from torch.utils.data.sampler import RandomSampler,BatchSampler, SequentialSampler
+from logging import error
+import redis
+import logging
+import torch
+import torchvision.transforms as transforms
 
+class RedisClient:
+
+    def __init__(self, redis_host, redis_port ):
+        self.exire_time = 0
+        self.conn = redis.StrictRedis(host=redis_host, port=redis_port)
+        self.isLocal = redis_host == '127.0.0.1'
+   
+
+    def set_data(self, key, value):
+        try:
+            self.conn.set(key, value)
+            return True
+        except Exception as e:
+                logging.error(str(e))
+                print(str(e))
+                return False
+        
+    def get_data(self, key):
+        try:
+            return self.conn.get(key)
+    
+        except Exception as e:
+                logging.error(str(e))
+                print(str(e))
+                return False
+        
 s3_client = boto3.client('s3')
 s3Resource = boto3.resource("s3")
 
@@ -127,7 +158,48 @@ def fetch_from_local_disk(num_times, labelled_paths, batch_id,bucket_name ):
         print("total time:{}".format(time.time() - tend))
 
 
+def fetch_from_redis(um_times, batch_ids):
+    end = time.time()
+    total_fetch_fromredis = 0
+    total_process = 0
+    cli = RedisClient(redis_host='54.201.114.145', redis_port='6378')
+    for id in batch_ids:
+        fend =time.time()
+        batch_data = cli.get_data(id)
+        total_fetch_fromredis += time.time() - fend
+        pend =time.time()
+        torch_imgs, torch_lables = convert_json_batch_to_torch_format(batch_data)
+        total_process += time.time() - pend
+        print("Image loading: {}, PreProcessing: {}".format(total_fetch_fromredis,total_process))
+
+    print("Image loading:{}".format(time.time() - end))
+
+
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+transform = transforms.Compose(
+        [#transforms.Resize(256), 
+         #transforms.CenterCrop(224), 
+         transforms.ToTensor(), normalize]
+    )
+def convert_json_batch_to_torch_format(batch_data):
+        samples = json.loads(batch_data)
+        imgs = []
+        labels  =[]
+        
+        for img,label in samples:
+            img = Image.open(io.BytesIO(base64.b64decode(img)))
+            img = transform(img)
+
+            imgs.append(img)
+            labels.append(label)
+
+        return torch.stack(imgs), torch.tensor(labels)
+
 if __name__ == "__main__":
+    with open('testing/batchids.txt') as file:
+     lines = [line.rstrip() for line in file]
+    fetch_from_redis(0, lines)
+
     f = open('testing/batchpaths.json')
     data = json.load(f)
     resposne = fetch_from_local_disk(196, data,'1', 'sdl-cifar10')

@@ -37,7 +37,7 @@ class SDLSampler():
 model_names = sorted(name for name in models.__dict__ if name.islower() and not name.startswith("__") and callable(models.__dict__[name]))
 parser = argparse.ArgumentParser(description="PyTorch Training")
 parser.add_argument("-a","--arch",metavar="ARCH",default="resnet18",choices=model_names,help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",)
-parser.add_argument("-j", "--num-workers", default=4, type=int, metavar="N", help="number of data loading workers (default: 4)")
+parser.add_argument("-j", "--num-workers", default=2, type=int, metavar="N", help="number of data loading workers (default: 4)")
 parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="manual epoch number (useful on restarts)")
 parser.add_argument("-epochs","--epochs", default=1, type=int, metavar="N", help="number of total epochs to run")  # default 90
 parser.add_argument("--lr", "--learning-rate", default=0.1, type=float, metavar="LR", help="initial learning rate", dest="lr")
@@ -140,7 +140,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device,client:C
     top5 = AverageMeter("Acc@5", ":6.2f")
 
     progress = ProgressMeter(
-        len(train_loader), [batch_time, total_data_load_time, transfer_to_gpu_time,processing_time, losses, top1], prefix="Epoch: [{}]".format(epoch)
+        len(train_loader), [batch_time, total_data_load_time, data_prep_time, transfer_to_gpu_time,processing_time], prefix="Epoch: [{}]".format(epoch)
     )
 
     # switch to train mode
@@ -150,11 +150,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args,device,client:C
 
     for i, (images, labels,batch_id, cache_hit, prep_time) in enumerate(train_loader):
 
-        #print("{},{}".format(batch_id,datetime.datetime.now()))
-
         # measure data loading time
         total_data_load_time.update((time.time() - end))
-        data_fetch_time.update((time.time() - end)-prep_time)
+        data_fetch_time.update(total_data_load_time.val-prep_time)
         data_prep_time.update(prep_time)
         total_files += len(images)
 

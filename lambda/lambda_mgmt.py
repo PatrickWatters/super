@@ -94,7 +94,7 @@ class SUPERLambdaMgmt(object):
 
     
 if __name__ == '__main__':
-    super_lambda = SUPERLambdaMgmt(handler_code_file='/Users/patrickwatters/Projects/super/lambda/handlers/lambda_handler_torch_dataload.py',lambda_name='lambda_dataloader_pytorch')
+    super_lambda = SUPERLambdaMgmt(handler_code_file='/Users/patrickwatters/Projects/super/lambda/handlers/lambda_handler_dataload.py',lambda_name='lambda_dataloader')
     #super_lambda.deploy_function()
     super_lambda.update_function()
     print('')

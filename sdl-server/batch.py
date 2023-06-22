@@ -90,13 +90,16 @@ class BatchGroup():
                                                            cache_after_retrevial=cache_after_retrevial,
                                                            include_batch_data_in_response= include_batch_data_in_response,
                                                            get_log= False)
+            paylaod = json.load(response['Payload'])
+        
         else:
             response = self.lambda_wrapper.fetch_from_local_disk(labelled_paths=self.batches[batch_id].labelled_paths,
                                                            batch_id=batch_id,
                                                            cache_after_retrevial=cache_after_retrevial,
                                                            include_batch_data_in_response= include_batch_data_in_response,
                                                            get_log= False, redis_client=self.redis_client)
-        paylaod = json.loads(response['Payload'])
+            paylaod = json.loads(response['Payload'])
+        
         if 'errorMessage' in paylaod:
             print(paylaod['errorMessage'])
         
@@ -106,7 +109,10 @@ class BatchGroup():
             logging.debug("{} ".format(batch_id))
 
         self.setBatchIsInProgress(batch_id, False)
-        return paylaod['batch_data']
+        if isPrefetch:
+            return None
+        else:
+            return paylaod['batch_data']
     
     def keep_alive_batch_ping(self, batch_id, prefetch_on_cache_miss = False):
         response = self.redis_client.get_data(batch_id)

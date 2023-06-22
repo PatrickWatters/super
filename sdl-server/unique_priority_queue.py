@@ -72,10 +72,9 @@ class UniquePriorityQueue(Queue):
                 priority, item = self.get()
                 job_id, group_id, batch_id,action = item
                 batch_group:BatchGroup = self.batch_groups[group_id]   
-
+                
                 if action == 'prefetch':
                     if not batch_group.batchIsCached(batch_id) and not batch_group.batchIsInProgress(batch_id):
-                        time.sleep(3)
                         batch_group.fetch_batch_via_lambda(batch_id, 
                                             include_batch_data_in_response=False,
                                             isPrefetch=True)

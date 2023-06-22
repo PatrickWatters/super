@@ -107,6 +107,8 @@ class MLTrainingJob():
         #check if batch is cached
         if self.currEpoch_batchGroup.batchIsCached(next_batch_id):
             batch_data,cache_hit = self.currEpoch_batchGroup.fetch_batch_via_cache(batch_id=next_batch_id)
+            #cache_hit = True
+            #batch_data = ''
             self.update_data_laoding_delay(self.avg_delay_on_hit)
             self.executor.submit(self.run_batch_access_time_prediction) # does not block
             #self.run_batch_access_time_prediction()
@@ -129,7 +131,6 @@ class MLTrainingJob():
      
             #self.run_batch_access_time_prediction()
 
-            time.sleep(3)
             batch_data = self.currEpoch_batchGroup.fetch_batch_via_lambda(batch_id=next_batch_id,
                                                                           include_batch_data_in_response=True,
                                                                           isPrefetch=False)

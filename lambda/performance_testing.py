@@ -1,5 +1,5 @@
 
-from super_lambda_mgmt import SUPERLambdaMgmt
+from lambda_mgmt import SUPERLambdaMgmt
 import random
 import time
 import torch
@@ -71,7 +71,7 @@ def gen_dummy_batch(batch_size=256):
     return batch_metadata
 
 def simple_invokation(action_params,batch_size):
-    mgr = SUPERLambdaMgmt(handler_code_file='/Users/patrickwatters/Projects/super/lambda/handlers/lambda_handler_torch_dataload.py',lambda_name='lambda_dataloader_pytorch')
+    mgr = SUPERLambdaMgmt(handler_code_file='/Users/patrickwatters/Projects/super/lambda/handlers/lambda_handler_dataload.py',lambda_name='lambda_dataloader')
     print(action_params['batch_id'])
     batch_metadata = gen_dummy_batch(batch_size)
     action_params['batch_metadata'] = batch_metadata
@@ -163,25 +163,25 @@ class ConsumerThread(threading.Thread):
 
 
 if __name__ == '__main__':
+    total_size = 0
+    consumers = []
+    outq = Queue()
+    q = Queue()
+    
     logging.basicConfig(format='%(asctime)s - %(message)s',filename='cache_load.log', encoding='utf-8', level=logging.INFO)
     batch_metadata = gen_dummy_batch(256)
     action_params = {}
     action_params['batch_metadata'] = batch_metadata
     action_params['batch_id'] = random.randint(0,10000000000)
     action_params['cache_bacth'] = True
-    action_params['return_batch_data'] = False
+    action_params['return_batch_data'] = True
     action_params['bucket'] = 'sdl-cifar10'    
-    action_params['redis_host'] = '35.163.39.6'    
+    action_params['redis_host'] = '54.201.114.145'    
     action_params['redis_port'] = 6378
     simple_invokation(action_params,256)
-    populate_cache_until_full(action_params,256,'sion_32_1024mb_laptop_with_no_data_transfer.csv',150)
+    #populate_cache_until_full(action_params,256,'sion_32_1024mb_laptop_with_no_data_transfer.csv',150)
     
     '''
-    #mulithreaded test
-    total_size = 0
-    consumers = []
-    outq = Queue()
-    q = Queue()
     
     batch_metadata = gen_dummy_batch(256)
     action_params['batch_metadata'] = batch_metadata

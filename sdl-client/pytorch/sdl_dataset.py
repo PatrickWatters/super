@@ -5,12 +5,10 @@ from typing import (Any,Callable,Optional,Dict,List,Tuple,TypeVar,Union,Iterable
 from PIL import Image
 #from misc.time_helper import stopwatch
 from torch.utils.data import Dataset
-from redis_client import RedisClient
 import io
 from client import CMSClient
 import base64
 import time
-redis_client = RedisClient('local')
 
 class SDLDataset(Dataset):
     def __init__(self,job_id:int,blob_classes:dict, transform:Optional[Callable] =None,target_transform:Optional[Callable]=None):
