@@ -94,7 +94,7 @@ def read_args():
                         help="input batch size for training",)
     
     parser.add_argument("--s3-bucket", type=str,default='sdl-cifar10',help="port for gprc server")
-    parser.add_argument("--redis-host", type=str,default='test.rdior4.ng.0001.usw2.cache.amazonaws.com',help="port for gprc server")
+    parser.add_argument("--redis-host", type=str,default='super.rdior4.ng.0001.usw2.cache.amazonaws.com',help="port for gprc server")
     parser.add_argument("--redis-port", type=str,default='6379',help="port for gprc server")
     parser.add_argument("--lambda_func_name", type=str,default='lambda_dataloader',help="port for gprc server")
 

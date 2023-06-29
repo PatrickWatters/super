@@ -24,7 +24,7 @@ class MLTrainingJob():
         self.job_started_timestamp = None
         self.job_finished_timestamp = None
         self.coordinator = coordinator
-        self.maxworkers = 10
+        self.maxworkers = 30
         self.prepared_batches = queue.Queue(maxsize=25)
         self.job_end = False
         self.activeBatchSetId = None
@@ -50,7 +50,7 @@ class MLTrainingJob():
             response = self.lambda_wrapper.invoke_function(
                 labelled_paths=self.coordinator.get_batch_lablled_paths(self.activeBatchSetId,batchId),
                 batch_id=batchId,
-                cache_after_retrevial=False)
+                cache_after_retrevial=True)
             
             paylaod = json.load(response['Payload'])
 
