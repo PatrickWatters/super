@@ -124,7 +124,7 @@ class DataFeedCoordinator():
         self.batchSets[bacthSetId].batches[batchId].setInProgessStatus(isInProgress=status)
     
     def set_batch_isCached(self, bacthSetId, batchId, status):
-        self.batchSets[bacthSetId].batches[batchId].setCachedStatus(isInProgress=status)
+        self.batchSets[bacthSetId].batches[batchId].setCachedStatus(isCached=status)
     
     def update_batch_last_access_time(self, bacthSetId, batchId):
         self.batchSets[bacthSetId].batches[batchId].updateLastPinged()
