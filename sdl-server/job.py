@@ -50,7 +50,7 @@ class MLTrainingJob():
             response = self.lambda_wrapper.invoke_function(
                 labelled_paths=self.coordinator.get_batch_lablled_paths(self.activeBatchSetId,batchId),
                 batch_id=batchId,
-                cache_after_retrevial=False)
+                cache_after_retrevial=True)
             
             paylaod = json.load(response['Payload'])
 
