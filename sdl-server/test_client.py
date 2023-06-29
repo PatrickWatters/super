@@ -164,19 +164,8 @@ def run_lambda_transform_test(numBatches = 5):
 
 #functions for testing the implementation
 if __name__ == '__main__':
-    run_lambda_transform_test()
-    #run_local_img_transform_test()
-    client = CMSClient()
-    jobid =1
-    response = client.registerJob(job_id=jobid)
-    print(response.message)
-    count =0
+    run_lambda_transform_test(numBatches=500)
+    #run_local_img_transform_test(numBatches=500)
     
-    end = time.time()
-    for i in range(0,50):
-       response = client.getBatches(jobid)
-       count+=1 
-       print(count, response.batchid)
-    print('total time: {}'.format(time.time()-end))
 
 
