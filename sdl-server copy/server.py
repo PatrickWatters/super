@@ -24,19 +24,20 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
         self.global_batch_group_idx = 0
         self.global_queue = UniquePriorityQueue()
         self.global_queue.batch_groups = self.batch_groups
-        self.global_queue.start_consumers(num_consumers=16)
+        self.global_queue.start_consumers(num_consumers=0)
         self._read_config()
         self._check_environment()
         self.lambda_wrapper = LambdaWrapper(self.bucket_name, self.redis_host, self.redis_port,function_name=self.lambda_func_name)
         self.redis_client:RedisClient = RedisClient(self.redis_host,self.redis_port)
         self._gen_new_group_of_batches() #create an initial set of batches
-        logging.basicConfig(filename='super.log', encoding='utf-8', level=logging.INFO, 
-                            format='%(asctime)s\t%(levelname)s\t%(message)s')
+
         #queue up the first few batches for the first job first epoch
+        '''
         firstset =  self.batch_groups[self.global_batch_group_idx].get_batch_ids()
         for i in range(0, self.warm_up_distance):
             batch_id = firstset[i]
             self.global_queue.put((100,(1000, self.global_batch_group_idx, batch_id, 'prefetch')))
+        '''
         pass
 
 
@@ -150,12 +151,16 @@ class CacheManagementService(pb2_grpc.CacheManagementServiceServicer):
     
 
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    port = "50052"
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
     pb2_grpc.add_CacheManagementServiceServicer_to_server(CacheManagementService(), server)
-    server.add_insecure_port('[::]:50052')
+    server.add_insecure_port("[::]:" + port)
     server.start()
+    print("Server started, listening on " + port)
     server.wait_for_termination()
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='super.log', encoding='utf-8', level=logging.INFO, 
+                            format='%(asctime)s\t%(levelname)s\t%(message)s')
     serve()

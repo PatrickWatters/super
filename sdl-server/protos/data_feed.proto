@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+service DatasetFeed {
+  
+  rpc shutdown(Empty) returns (Empty) {}
+  rpc registerjob(RegisterJobRequest) returns (MessageResponse) {}
+  //rpc getBatches(GetBatchesRequest) returns (stream Sample) {}
+  rpc getBatches(GetBatchesRequest) returns (Sample) {}
+
+  //rpc GetNextBatchForJob(GetNextBatchForJobMessage) returns (GetNextBatchForJobResponse) {}
+
+}
+
+message RegisterJobRequest{
+    int32 job_id = 1;
+  }
+
+message GetBatchesRequest{
+    int32 job_id = 1;
+  }
+message MessageResponse{
+    string message = 1;
+   }
+
+message Empty {
+}
+
+message Sample {
+   int32 batchid =1;
+   //bytes image = 2;
+   //bytes label = 3;
+   string data = 2;
+   string label = 3;
+}
+
+//cd sdl-server/protos
+//python -m grpc_tools.protoc --proto_path=. ./data_feed.proto --python_out=.. --grpc_python_out=..

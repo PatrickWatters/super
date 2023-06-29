@@ -36,6 +36,7 @@ class CMSClient(object):
         messageRequest = pb2.JobEndedMessage(job_id=job_id)
         response = self.stub.ProcessJobEndedMessage(messageRequest)
         print(response.message)
+        self.channel.close()
 
     def register_training_job(self,job_id:int,batch_size:int):
         """

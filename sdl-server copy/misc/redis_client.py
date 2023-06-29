@@ -10,20 +10,20 @@ class RedisClient:
         self.isLocal = redis_host == '127.0.0.1'
    
 
-    def set_batch(self, batch_id, batch_data):
+    def set_data(self, key, value):
         try:
-            self.conn.set(batch_id, batch_data)
+            self.conn.set(key, value)
             return True
         except Exception as e:
                 logging.error(str(e))
                 print(str(e))
                 return False
         
-    def get_batch(self, batch_id):
+    def get_data(self, key):
         try:
-            return self.conn.get(batch_id)
+            return self.conn.get(key)
     
         except Exception as e:
                 logging.error(str(e))
                 print(str(e))
-                return None
+                return False

@@ -10,6 +10,7 @@ from client import CMSClient
 import base64
 import time
 
+client=CMSClient()
 class SDLDataset(Dataset):
     def __init__(self,job_id:int,blob_classes:dict, transform:Optional[Callable] =None,target_transform:Optional[Callable]=None):
         self.transform = transform
@@ -17,7 +18,7 @@ class SDLDataset(Dataset):
         self._blob_classes = blob_classes
         self.job_id = job_id
         self.length = sum(len(class_items) for class_items in self._blob_classes.values())
-    
+
     @functools.cached_property
     def _classed_items(self) -> List[Tuple[str, int]]:
         return [
@@ -29,6 +30,7 @@ class SDLDataset(Dataset):
         return sum(len(class_items) for class_items in self._blob_classes.values())
     
     def __getitem__(self, input):
+        input = client.get_next_batch_for_job(self.job_id)
         batch_id = input[0]
         batch_indices = input[1]
         isCached = input[2]

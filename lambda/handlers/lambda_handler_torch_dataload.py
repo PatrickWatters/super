@@ -16,6 +16,7 @@ from boto3.s3.transfer import TransferConfig
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
+import gzip
 # ===================================== Setings ==================================================================
 s3 = boto3.client('s3')
 redis_client = None
@@ -23,6 +24,14 @@ GB = 1024 ** 3
 config = TransferConfig(use_threads=True,max_concurrency=10,multipart_threshold=5*GB) # To consume less downstream bandwidth, decrease the maximum concurrency
 # ===================================== Setings ==================================================================
 logger = logging.getLogger()
+
+transform=transforms.Compose([
+            #transforms.RandomResizedCrop(224),
+            #transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+            transforms.GaussianBlur(11)
+            ])
 
 def lambda_handler(event, context):
     # Set the log level based on a variable configured in the Lambda environment.
@@ -44,9 +53,12 @@ def lambda_handler(event, context):
         for key, result in fetch_data_from_s3(bucket_name=bucket_name,batch_metadata=batch_metadata,func_name=load_img_as_tensor):
             imgs.append(result[0])
             labels.append(result[1])
+        
         with io.BytesIO() as f:
             torch.save({'inputs': torch.stack(imgs), 'labels': torch.tensor(labels)}, f)
-            base_64_encoded_batch = base64.b64encode(f.getvalue()).decode('utf-8')
+            compressed = gzip.compress(f.getvalue(),compresslevel=9)
+            base_64_encoded_batch = base64.b64encode(compressed).decode('utf-8')
+            #base_64_encoded_batch = base64.b64encode(f.getvalue()).decode('utf-8')
         
         if cache_bacth:      
             try:
@@ -57,11 +69,10 @@ def lambda_handler(event, context):
                 cache_error_message = str(e)  
                 logger.error(e, exc_info=True)
 
-
         if not isCached or return_batch_data:
                 return {'batch_id': batch_id,'isCached': isCached,'batch_data':base_64_encoded_batch,'cache_error_message':cache_error_message}
         else:
-            return {'batch_id': batch_id,'isCached': isCached,'cache_error_message':cache_error_message}
+                return {'batch_id': batch_id,'isCached': isCached,'batch_data':base_64_encoded_batch,'cache_error_message':cache_error_message}
         
     except Exception as e:  # Catch all for easier error tracing in logs
         logger.error(e, exc_info=True)
@@ -70,7 +81,7 @@ def lambda_handler(event, context):
 
 
 def fetch_data_from_s3(bucket_name,batch_metadata,func_name):
-    with ThreadPoolExecutor(max_workers=32) as executor:
+    with ThreadPoolExecutor(max_workers=16) as executor:
         future_to_key = {executor.submit(func_name, key,bucket_name): key for key in batch_metadata}
         for future in concurrent.futures.as_completed(future_to_key):
             key = future_to_key[future]
@@ -87,9 +98,7 @@ def load_img_as_tensor(labelledItem, s3_bucket):
         s3.download_fileobj(s3_bucket,file_path,f, Config=config)
         img = Image.open(io.BytesIO(f.getvalue()))
         pil_img = img.convert('RGB')
-    
-    transformation = transforms.Compose([transforms.ToTensor(),])
-    tensor_img = transformation(pil_img)
+        tensor_img = transform(pil_img)
     return tensor_img, label
 
 
