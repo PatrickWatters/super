@@ -97,7 +97,7 @@ def read_args():
     parser.add_argument("--s3-bucket", type=str,default='sdl-cifar10',help="port for gprc server")
     parser.add_argument("--redis-host", type=str,default='test.rdior4.ng.0001.usw2.cache.amazonaws.com',help="port for gprc server")
     parser.add_argument("--redis-port", type=str,default='6379',help="port for gprc server")
-    parser.add_argument("--lambda_func_name", type=str,default='lambda_dataloader',help="port for gprc server")
+    parser.add_argument("--lambda_func_name", type=str,default='lambda_dataloader_pytorch',help="port for gprc server")
 
     parser.add_argument("--port", type=str,default='50052',help="port for gprc server")
     parser.add_argument("--grpc-workers", type=int, default=1, metavar="N",

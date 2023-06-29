@@ -156,7 +156,7 @@ def run_lambda_transform_test(numBatches = 5):
     print('total time: {}, datafetch:{}, trasnform {}, toal size: {}'.
           format(time.time()-end,totalfetch_time,totaltansformation_time,tsize))
     
-    with open('lambda_img_transform.csv', 'w') as csv_file:  
+    with open('lambda10240_img_transform.csv', 'w') as csv_file:  
         writer = csv.writer(csv_file)
         for value in stats:
             writer.writerow([value[0], value[1], value[2],value[3]])
@@ -164,8 +164,8 @@ def run_lambda_transform_test(numBatches = 5):
 
 #functions for testing the implementation
 if __name__ == '__main__':
-    #run_lambda_transform_test(numBatches=500)
-    run_local_img_transform_test(numBatches=500)
+    run_lambda_transform_test(numBatches=500)
+    #run_local_img_transform_test(numBatches=500)
     
 
 
