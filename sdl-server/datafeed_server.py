@@ -46,8 +46,7 @@ class DatasetFeedService(data_feed_pb2_grpc.DatasetFeedServicer):
         batch_data, batch_id = self.training_jobs[job_id].next_batch()
         return data_feed_pb2.Sample(batchid=batch_id,
                                     data = batch_data,
-                                    label = batch_id)
-
+                                    label = str(batch_id))
 def start(kill_event, args):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     data_feed_pb2_grpc.add_DatasetFeedServicer_to_server(
