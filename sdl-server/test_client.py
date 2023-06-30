@@ -156,7 +156,7 @@ def run_lambda_transform_test(numBatches = 5 ):
     print('total time: {}, datafetch:{}, trasnform {}, toal size: {}'.
           format(time.time()-end,totalfetch_time,totaltansformation_time,tsize))
     
-    with open('withcache/lambda_img_transform_20workers.csv', 'w') as csv_file:  
+    with open('withcache/lambda_img_transform_10workers.csv', 'w') as csv_file:  
         writer = csv.writer(csv_file)
         for value in stats:
             writer.writerow([value[0], value[1], value[2],value[3]])
