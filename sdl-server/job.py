@@ -42,7 +42,7 @@ class MLTrainingJob():
             self.fetch_batch_data(batchId)
         
         if data is None:
-            
+            logger.info("cache miss: {}".format(batchId))
             #not found in cache and not inProgress... lets do it the slower way
             self.coordinator.set_batch_inProgress(self.activeBatchSetId,batchId,True)
             #time.sleep(random.random())
