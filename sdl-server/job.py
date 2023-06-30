@@ -24,7 +24,7 @@ class MLTrainingJob():
         self.job_started_timestamp = None
         self.job_finished_timestamp = None
         self.coordinator = coordinator
-        self.maxworkers = 5
+        self.maxworkers = 30
         self.prepared_batches = queue.Queue(maxsize=25)
         self.job_end = False
         self.activeBatchSetId = None
@@ -33,7 +33,7 @@ class MLTrainingJob():
 
     def fetch_batch_data(self, batchId):
         data = None
-        if not self.coordinator.batch_is_cached(self.activeBatchSetId, batchId):
+        if self.coordinator.batch_is_cached(self.activeBatchSetId, batchId):
             data = self.redis_client.get_batch(batchId)
             if data is not None:
                 self.coordinator.update_batch_last_access_time(self.activeBatchSetId,batchId)
