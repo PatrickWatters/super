@@ -33,7 +33,7 @@ class MLTrainingJob():
 
     def fetch_batch_data(self, batchId):
         data = None
-        if not self.coordinator.batch_is_cached(self.activeBatchSetId, batchId):
+        if self.coordinator.batch_is_cached(self.activeBatchSetId, batchId):
             data = self.redis_client.get_batch(batchId)
             if data is not None:
                 self.coordinator.update_batch_last_access_time(self.activeBatchSetId,batchId)
