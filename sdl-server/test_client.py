@@ -10,7 +10,7 @@ from PIL import Image
 import io
 import base64
 import gzip
-
+import os
 transform=transforms.Compose([
             #transforms.RandomResizedCrop(224),
             #transforms.RandomHorizontalFlip(),
@@ -76,7 +76,7 @@ def size_of_tensor_in_bytes(encoding):
 def run_local_img_transform_test(numBatches = 5):
     stats =[]
     client = CMSClient()
-    job_id=2
+    job_id= os.getpid()
     response = client.registerJob(job_id)
     count =0
     tsize =0
@@ -122,10 +122,10 @@ def deserialize_torch_bacth(batch_data):
     return size_of_tensor_in_bytes(batch_imgs)
 
 
-def run_lambda_transform_test(numBatches = 5):
+def run_lambda_transform_test(numBatches = 5 ):
     stats =[]
     client = CMSClient()
-    job_id=3
+    job_id=os.getpid() 
     response = client.registerJob(job_id)
     count =0
     tsize =0
