@@ -24,7 +24,7 @@ class MLTrainingJob():
         self.job_started_timestamp = None
         self.job_finished_timestamp = None
         self.coordinator = coordinator
-        self.maxworkers = 10
+        self.maxworkers = 5
         self.prepared_batches = queue.Queue(maxsize=25)
         self.job_end = False
         self.activeBatchSetId = None
