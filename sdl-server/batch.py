@@ -15,19 +15,19 @@ class Batch():
         self.lock = Lock()
 
     def setInProgessStatus(self, isInProgress=False):
-        #with self.lock:
+        with self.lock:
             self.inProgress = isInProgress
     
     def setCachedStatus(self, isCached=False):
-        #with self.lock:
+        with self.lock:
             self.isCached = isCached
     
     def updateLastPinged(self):
-        #with self.lock:
+        with self.lock:
             self.last_pinged = time.time()
     
     def updateProcessedBy(self, jobId):
-        #with self.lock:
+        with self.lock:
             self.processed_by.append(jobId)
     
     def incrementCounter(self):
