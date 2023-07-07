@@ -92,7 +92,9 @@ def read_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch-size", type=int, default=128, metavar="N",
                         help="input batch size for training",)
-    
+    parser.add_argument("--source-system", type=str,default='local',help="port for gprc server")
+    parser.add_argument("--data-dir", type=str,default='/Users/patrickwatters/Projects/datasets/sdl-cifar10',help="port for gprc server")
+
     parser.add_argument("--s3-bucket", type=str,default='sdl-cifar10',help="port for gprc server")
     parser.add_argument("--redis-host", type=str,default='super.rdior4.ng.0001.usw2.cache.amazonaws.com',help="port for gprc server")
     parser.add_argument("--redis-port", type=str,default='6379',help="port for gprc server")

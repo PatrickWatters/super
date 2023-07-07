@@ -14,12 +14,16 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 class DataFeedCoordinator():
     def __init__(self,args):
         self.global_epoch_counter = 0
-        self.s3_bucket = args.s3_bucket
         self.batch_size = args.batch_size
         self.drop_last =False
         self.prefix = 'train'
         self.IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG','.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',]
-        self._blob_classes = self._classify_blobs()
+        if args.source_system == 's3':
+            self.s3_bucket = args.s3_bucket
+            self._blob_classes = self._classify_blobs()
+        else:
+            self.dataset_location = args.dataset_folder
+        
         self.use_random_sampling = False
         self.batchSets:Dict[str, BatchSet] = {}
     
