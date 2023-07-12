@@ -9,11 +9,10 @@ import torch.utils.data.distributed
 import torchvision.models as models
 import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
-from client import CMSClient
-from sdl_dataset import SDLDataset
-from  data_objects import BatchMeasurment, EpochMeasurment
-from profiler import TrainingProfiler
-import copy
+from misc.client import CMSClient
+from datasets.sdl_dataset import SDLDataset
+from profiling.data_objects import BatchMeasurment, EpochMeasurment
+from profiling.profiler import TrainingProfiler
 
 class SDLSampler():
 

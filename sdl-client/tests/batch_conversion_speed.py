@@ -7,11 +7,6 @@ import base64
 import time
 import redis
 import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import concurrent.futures
-import threading
 
 
 class RedisClient:
@@ -38,10 +33,6 @@ class RedisClient:
                 print(str(e))
                 return False
         
-
-
-
-
 
 def process_batch(num_times,torch_format=False, transforms=None, multithreaded = False, num_workers = False):
     results={}
@@ -103,13 +94,3 @@ if __name__ == "__main__":
 
     torch_times = process_batch(num_times=1000, torch_format=True, transforms=None)
     pil_times =   process_batch(num_times=1000, torch_format=False, transforms=transform)
-
-    plt.figure(figsize=(5, 2.7), layout='constrained')
-    plt.plot(list(torch_times.keys()),list(torch_times.values()), label='Tensor Format')
-    plt.plot(list(pil_times.keys()),list(pil_times.values()),label='PIL Format')
-    plt.xlabel('Batch Idx')
-    plt.ylabel('Data Augmentation Time (s)')
-    plt.title("Data Augmentation Performance")
-    plt.legend()
-    plt.show()
-    print('')

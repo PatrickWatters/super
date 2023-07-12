@@ -10,9 +10,10 @@ import torch.optim
 import torch.utils.data.distributed
 import torchvision.models as models
 import torchvision.transforms as transforms
-from client import CMSClient
-from sdl_dataset import SDLDataset
+from misc.client import CMSClient
+from datasets.sdl_dataset import SDLDataset
 import random
+
 class SDLSampler():
 
     def __init__(self,job_id, num_batches,sdl_client:CMSClient, ):        
