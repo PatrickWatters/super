@@ -1,12 +1,16 @@
-import grpc
+# Imports Python builtins.
 from concurrent import futures
-import data_feed_pb2
-import data_feed_pb2_grpc
 import multiprocessing as mp
 import logging
 import sys
-from job import MLTrainingJob
 from typing import Dict
+# Imports other packages.
+import grpc
+# Imports local packages.
+from args import parse_args
+from job import MLTrainingJob
+import data_feed_pb2
+import data_feed_pb2_grpc
 
 # Logging initialization
 logger = logging.getLogger(__name__)
@@ -51,9 +55,9 @@ def start(kill_event, args):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     data_feed_pb2_grpc.add_DatasetFeedServicer_to_server(
         DatasetFeedService(kill_event,args), server)
-    server.add_insecure_port("[::]:" + args.port)
+    server.add_insecure_port("[::]:" + args.gprc_port)
     server.start()
-    logger.info("gRPC Data Server started, listening on port {}.".format(args.port))
+    logger.info("gRPC Data Server started, listening on port {}.".format(args.gprc_port))
     return server
 
 def shutdown(grpc_server):
@@ -87,25 +91,6 @@ def serve(args):
     shutdown(grpc_server)
 
 
-def read_args():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--batch-size", type=int, default=128, metavar="N",
-                        help="input batch size for training",)
-    parser.add_argument("--source-system", type=str,default='local',help="port for gprc server")
-    parser.add_argument("--data-dir", type=str,default='/Users/patrickwatters/Projects/datasets/sdl-cifar10',help="port for gprc server")
-
-    parser.add_argument("--s3-bucket", type=str,default='sdl-cifar10',help="port for gprc server")
-    parser.add_argument("--redis-host", type=str,default='super.rdior4.ng.0001.usw2.cache.amazonaws.com',help="port for gprc server")
-    parser.add_argument("--redis-port", type=str,default='6379',help="port for gprc server")
-    parser.add_argument("--lambda_func_name", type=str,default='lambda_dataloader_pytorch',help="port for gprc server")
-
-    parser.add_argument("--port", type=str,default='50052',help="port for gprc server")
-    parser.add_argument("--grpc-workers", type=int, default=1, metavar="N",
-                        help="No. of gRPC server workers",)
-    
-    args, unknown = parser.parse_known_args()
-    return args
-
 if __name__ == "__main__":
-    serve(read_args())
+    args = parse_args(default_config_file='sdl-server/cfgs/cifar10_local.yaml')
+    serve(args)

@@ -164,8 +164,8 @@ def run_lambda_transform_test(numBatches = 5 ):
 
 #functions for testing the implementation
 if __name__ == '__main__':
-    run_lambda_transform_test(numBatches=500)
-    #run_local_img_transform_test(numBatches=500)
+    #run_lambda_transform_test(numBatches=500)
+    run_local_img_transform_test(numBatches=500)
     
 
 

@@ -6,6 +6,8 @@ import time
 import logging
 import sys
 import functools
+from pathlib import Path
+import glob
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -20,10 +22,10 @@ class DataFeedCoordinator():
         self.IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG','.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',]
         if args.source_system == 's3':
             self.s3_bucket = args.s3_bucket
-            self._blob_classes = self._classify_blobs()
+            self._blob_classes = self._classify_blobs_s3()
         else:
-            self.dataset_location = args.dataset_folder
-        
+            self.data_dir = args.data_dir + '/' + self.prefix
+            self._blob_classes = self._classify_blobs_local()
         self.use_random_sampling = False
         self.batchSets:Dict[str, BatchSet] = {}
     
@@ -43,7 +45,31 @@ class DataFeedCoordinator():
             return s
         return s[len(prefix) :]
     
-    def _classify_blobs(self) -> Dict[str, List[str]]:
+    def _classify_blobs_local(self) -> Dict[str, List[str]]:
+        blob_classes: Dict[str, List[str]] = {}
+        index_file = Path(self.data_dir + '/train_index.json')
+        if(index_file.exists()):
+          f = open(index_file.absolute())
+          blob_classes = json.load(f)
+        else:
+            for filename in glob.iglob(self.data_dir + '**/**', recursive=True):
+                #check if the object is a folder which we want to ignore
+                if filename[-1] == "/":
+                    continue
+                if not self.is_image_file(filename):
+                    continue
+            
+                stripped_path = self._remove_prefix(filename, self.data_dir).lstrip("/")
+                blob_class = stripped_path.split("/")[0]
+                blobs_with_class = blob_classes.get(blob_class, [])
+                blobs_with_class.append(filename)
+                blob_classes[blob_class] = blobs_with_class
+        return blob_classes
+    
+    def is_image_file(self, filename):
+        return any(filename.endswith(extension) for extension in self.IMG_EXTENSIONS)
+
+    def _classify_blobs_s3(self) -> Dict[str, List[str]]:
          
         logger.info("Reading dataset from S3 bucket:{}.".format(self.s3_bucket))
         end = time.time()
