@@ -98,5 +98,5 @@ def serve(args):
 
 
 if __name__ == "__main__":
-    args = parse_args(default_config_file='/Users/patrickwatters/Projects/super/sdl-server/cfgs/cifar10_local.yaml')
+    args = parse_args(default_config_file='sdl-server/cfgs/cifar10_local.yaml')
     serve(args)
