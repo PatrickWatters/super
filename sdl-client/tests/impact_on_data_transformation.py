@@ -167,21 +167,9 @@ def run_lambda_transform_test(numBatches = 5 ):
 
 #functions for testing the implementation
 if __name__ == '__main__':
+    run_local_img_transform_test(500)
     run_lambda_transform_test(500)
-    tic = time.time()
-    
-    process_list = []
-    for i in range(1):
-        p =  multiprocessing.Process(target= run_lambda_transform_test, args = [500])
-        p.start()
-        process_list.append(p)
 
-    for process in process_list:
-        process.join()
-
-    toc = time.time()
-
-    print('Done in {:.4f} seconds'.format(toc-tic))
 
 
 
