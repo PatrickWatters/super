@@ -1,6 +1,4 @@
 import argparse
-import json
-import logging
 import os
 import time
 import torch
@@ -10,13 +8,31 @@ import torch.optim
 import torch.utils.data.distributed
 import torchvision.models as models
 import torchvision.transforms as transforms
-from misc.client import CMSClient
-from datasets.sdl_dataset import SDLDataset
-import random
+from torch.optim.lr_scheduler import StepLR
+from client import CMSClient
+from sdl_dataset import SDLDataset
+from profiler_utils import DataStallProfiler
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
 
 class SDLSampler():
 
-    def __init__(self,job_id, num_batches,sdl_client:CMSClient, ):        
+    def __init__(self,job_id, num_batches,sdl_client:CMSClient,):        
         self.num_batches = num_batches
         self.sdl_client = sdl_client
         self.job_id = job_id
@@ -24,8 +40,8 @@ class SDLSampler():
 
     def __iter__(self):
         for i in range(0, self.num_batches): 
-            yield self.sdl_client.get_next_batch_for_job(self.job_id)
-            #yield batch_id,btach_metadata,is_cached
+            yield self.sdl_client.getBatches(self.job_id)
+            #yield i
     
     def __len__(self):
         return self.num_batches
@@ -37,7 +53,7 @@ class SDLSampler():
 model_names = sorted(name for name in models.__dict__ if name.islower() and not name.startswith("__") and callable(models.__dict__[name]))
 parser = argparse.ArgumentParser(description="PyTorch Training")
 parser.add_argument("-a","--arch",metavar="ARCH",default="resnet18",choices=model_names,help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",)
-parser.add_argument("-j", "--num-workers", default=0, type=int, metavar="N", help="number of data loading workers (default: 4)")
+parser.add_argument("-j", "--num-workers", default=2, type=int, metavar="N", help="number of data loading workers (default: 4)")
 parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="manual epoch number (useful on restarts)")
 parser.add_argument("-epochs","--epochs", default=3, type=int, metavar="N", help="number of total epochs to run")  # default 90
 parser.add_argument("--lr", "--learning-rate", default=0.1, type=float, metavar="LR", help="initial learning rate", dest="lr")
@@ -47,14 +63,27 @@ parser.add_argument("-p", "--print-freq", default=1, type=int, metavar="N", help
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument("--batch-size", type=int, default=256)
 parser.add_argument("--pin-memory", type=int, default=0)
+parser.add_argument("-tid","--trail-id", default=1, type=int, help="trialid")  # default 90 default=random.randint(0,100)
+
 best_acc1 = 0
+best_prec1 = 0
+
+compute_time_list = []
+data_time_list = []
 
 def main():
+    
+    start_full = time.time()
+    global best_prec1, args,best_acc1
+    time_stat = []
+    start = time.time()
+
+
     args = parser.parse_args()
     args.jobid = os.getpid()
-    global best_acc1
     client = CMSClient()
-    
+    args.dprof = DataStallProfiler(args)
+
     #copy model to the correct device
     print("=> creating model '{}'".format(args.arch))
     model = models.__dict__[args.arch]()
@@ -79,10 +108,12 @@ def main():
         print("using CPU, this will be slow")
         device = torch.device("cpu")
     
+
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
     optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
     # Data loading part
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     transform = transforms.Compose(
@@ -92,134 +123,122 @@ def main():
     )
 
     #custom SDL Part
-    response_message,successfully_registered,labelled_dataset,batches_per_epoch = client.register_training_job(args.jobid,args.batch_size)
+    response_message,successfully_registered,batches_per_epoch, dataset_len = client.registerJob(args.jobid)
     print(response_message)
     if not successfully_registered:
         exit()
-        
-    train_dataset = SDLDataset(job_id=args.jobid, blob_classes=labelled_dataset,client=client, transform=transform, target_transform=None)
+    
+    train_dataset = SDLDataset(job_id=args.jobid, length=dataset_len, transform=transform, target_transform=None)
     sdl_sampler = SDLSampler(job_id=args.jobid, num_batches=batches_per_epoch, sdl_client =client)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=None, num_workers=args.num_workers, sampler=sdl_sampler, pin_memory=True if args.pin_memory == 1 else False)
+    train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=None, 
+                                               num_workers=args.num_workers, 
+                                               sampler=sdl_sampler, 
+                                               pin_memory=True if args.pin_memory == 1 else False)
     
+    total_time = AverageMeter()
+    dur_setup = time.time() - start
+    time_stat.append(dur_setup)
+    #print("Batch size for GPU {} is {}, workers={}".format(args.gpu, args.batch_size, args.workers)
+
     for epoch in range(args.start_epoch, args.epochs):
+        # log timing
+        start_ep = time.time()
+        avg_train_time = train(train_loader, model, criterion, optimizer, epoch+1, args,device, client=client)
+        total_time.update(avg_train_time)
+
         adjust_learning_rate(optimizer, epoch, args)
         # train next epoch
-        train(train_loader, model, criterion, optimizer, epoch, args,device, client)
-    client.job_ended_nofifcation(args.jobid)
+        
+        #acc1 = validate(val_loader, model, criterion, args) # remember best acc@1 and save checkpoint
 
-def train(train_loader, model, criterion, optimizer, epoch, args,device, client:CMSClient):
-    total_cache_hits = 0
-    total_cache_misses = 0
-    total_files = 0
-    total_batch_time = AverageMeter("TotalTime", ":6.3f")
-    data_fetch_time = AverageMeter("Fetch", ":6.3f")
-    transfer_to_gpu_time = AverageMeter("Transfer", ":6.3f")
-    processing_time = AverageMeter('Process', ':6.3f')
-    losses = AverageMeter("Loss", ":.4e")
-    top1 = AverageMeter("Acc@1", ":6.2f")
-    top5 = AverageMeter("Acc@5", ":6.2f")
-    round_by_points = 3
-    progress = ProgressMeter(
-        len(train_loader), [total_batch_time, data_fetch_time,transfer_to_gpu_time,processing_time, losses, top1, top5], prefix="Epoch: [{}]".format(epoch)
-    )
+        scheduler.step()
 
+        dur_ep = time.time() - start_ep
+        print("EPOCH DURATION = {}".format(dur_ep))
+        time_stat.append(dur_ep)
+        #is_best = acc1 > best_acc1
+        #best_acc1 = max(acc1, best_acc1)
+    
+    #client.job_ended_nofifcation(args.jobid)
+    dur_full = time.time() - start_full
+    print("Total time for all epochs = {}".format(dur_full))   
+
+    args.dprof.stop_profiler()
+    #profiler.gen_final_exel_report()
+
+# item() is a recent addition, so this helps with backward compatibility.
+def to_python_float(t):
+    if hasattr(t, 'item'):
+        return t.item()
+    else:
+        return t[0]
+    
+def train(train_loader, model, criterion, optimizer, epoch, args,device,client:CMSClient):
+    
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    losses = AverageMeter()
+    top1 = AverageMeter()
+    top5 = AverageMeter()
+    
     # switch to train mode
     model.train()
     end = time.time()
-    for i, (images, labels,batch_id, cache_hit) in enumerate(train_loader):
-        #if i % 4 == 0:
-        #    time.sleep(random.uniform(1.0, 5.0)) #delay data loading every 4 batches
+    args.dprof.start_data_tick()
+    dataset_time = compute_time = 0
+
+
+    for i, (images, labels,batch_id, cache_hit, prep_time) in enumerate(train_loader):
+
         # measure data loading time
-        data_fetch_time.update(time.time() - end)
-
-        processing_started = time.time()
-        time.sleep(0.012)
-        processing_time.update(time.time() - processing_started)
-        client.record_training_stats(processing_time.avg,data_fetch_time.val)
-
-        total_batch_time.update(time.time() - end)
-        end = time.time()
-    '''
-    for i, (images, target,batch_id, cache_hit) in enumerate(train_loader):
-        
         # measure data loading time
-        data_fetch_time.update(time.time() - end)
-        total_files += len(images)
-
-        if cache_hit:
-            total_cache_hits +=1
-        else:
-            total_cache_misses +=1
-
-        #measure time to transfer data to GPU
-        transfer_start = time.time()
+        data_time.update(time.time() - end)
+        dataset_time += (time.time() - end)
+        compute_start = time.time()
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
-        transfer_to_gpu_time.update(time.time() - transfer_start)
-
-        #measure time to process batch on device
-        processing_started = time.time()
-        #time.sleep(args.training_speed)
-     
+        #-----------------Stop data, start compute------#
+        #if profiling, sync here
+        #torch.cuda.synchronize()
+        args.dprof.stop_data_tick()
+        args.dprof.start_compute_tick()
+        #-----------------------------------------------# 
+       
+        # compute output
+        processing_started = time.time() 
         output = model(images)
-        loss = criterion(output, target)
-        # measure accuracy and record loss
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
-        losses.update(loss.item(), images.size(0))
-        top1.update(acc1[0], images.size(0))
-        top5.update(acc5[0], images.size(0))
+        loss = criterion(output, labels)
 
+        # measure accuracy and record loss
+        acc1, acc5 = accuracy(output, labels, topk=(1, 5))
+        losses.update(to_python_float(loss.data), images.size(0))
+
+        top1.update(to_python_float(acc1), images.size(0))
+        top5.update(to_python_float(acc5), images.size(0))
+       
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-      
-        processing_time.update(time.time() - processing_started)
+
+        #torch.cuda.synchronize()
+
+        #-----------------Stop compute, start data------#
+        args.dprof.stop_compute_tick()
+        args.dprof.start_data_tick()
+        #-----------------------------------------------#
+        compute_time += (time.time() - compute_start)
 
         # measure elapsed time
-        total_batch_time.update(time.time() - end)
-    '''
-class AverageMeter(object):
-    """Computes and stores the average and current value."""
-    def __init__(self, name, fmt=":f"):
-        self.name = name
-        self.fmt = fmt
-        self.reset()
+        batch_time.update(time.time() - end)
 
-    def reset(self):
-        self.val = 0
-        self.avg = 0  # noqa
-        self.sum = 0
-        self.count = 0
+        end = time.time()
 
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
+    data_time_list.append(dataset_time)
+    compute_time_list.append(compute_time)
+    return batch_time.avg
 
-        self.count += n
-        self.avg = self.sum / self.count  # noqa
-
-    def __str__(self):
-        fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
-        return fmtstr.format(**self.__dict__)
-
-
-class ProgressMeter(object):
-    def __init__(self, num_batches, meters, prefix=""):
-        self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
-        self.meters = meters
-        self.prefix = prefix
-
-    def display(self, batch):
-        entries = [self.prefix + self.batch_fmtstr.format(batch)]
-        entries += [str(meter) for meter in self.meters]
-        print("\t".join(entries))
-
-    def _get_batch_fmtstr(self, num_batches):
-        num_digits = len(str(num_batches // 1))
-        fmt = "{:" + str(num_digits) + "d}"
-        return "[" + fmt + "/" + fmt.format(num_batches) + "]"
     
 
 def adjust_learning_rate(optimizer, epoch, args):

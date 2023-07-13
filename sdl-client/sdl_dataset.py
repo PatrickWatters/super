@@ -11,35 +11,21 @@ import base64
 import time
 
 client=CMSClient()
+
 class SDLDataset(Dataset):
-    def __init__(self,job_id:int,blob_classes:dict, transform:Optional[Callable] =None,target_transform:Optional[Callable]=None):
+    def __init__(self,job_id:int,length:int, transform:Optional[Callable] =None,target_transform:Optional[Callable]=None):
         self.transform = transform
         self.target_transform = target_transform
-        self._blob_classes = blob_classes
         self.job_id = job_id
-        self.length = sum(len(class_items) for class_items in self._blob_classes.values())
+        self.lenth = length
 
-    @functools.cached_property
-    def _classed_items(self) -> List[Tuple[str, int]]:
-        return [
-            (blob, class_index)
-            for class_index, blob_class in enumerate(self._blob_classes)
-            for blob in self._blob_classes[blob_class]
-        ]
     def __len__(self) -> int:
-        return sum(len(class_items) for class_items in self._blob_classes.values())
+        return self.lenth
     
     def __getitem__(self, input):
-        input = client.get_next_batch_for_job(self.job_id)
-        batch_id = input[0]
-        batch_indices = input[1]
-        isCached = input[2]
-        batch_data = input[3]
-
-        if isCached:
-            cache_hit = True
-        else:
-            cache_hit = False
+        batch_data = input.data
+        batch_id = input.batchid
+        cache_hit = True
         end = time.time()
         torch_imgs, torch_lables = self.convert_json_batch_to_torch_format(batch_data)
         prep_time = time.time() - end

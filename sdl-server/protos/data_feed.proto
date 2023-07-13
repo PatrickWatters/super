@@ -3,7 +3,7 @@ syntax = "proto3";
 service DatasetFeed {
   
   rpc shutdown(Empty) returns (Empty) {}
-  rpc registerjob(RegisterJobRequest) returns (MessageResponse) {}
+  rpc registerjob(RegisterJobRequest) returns (RegisterJobResponse) {}
   rpc getBatches(GetBatchesRequest) returns (Sample) {}
 }
 
@@ -29,5 +29,11 @@ message Sample {
    string label = 3;
 }
 
+message RegisterJobResponse{
+  string message = 1;
+  bool successfully_registered = 2;
+  int32 batches_per_epoch = 3;
+  int32 dataset_length = 4;
+ }
 //cd sdl-server/protos
 //python -m grpc_tools.protoc --proto_path=. ./data_feed.proto --python_out=.. --grpc_python_out=..

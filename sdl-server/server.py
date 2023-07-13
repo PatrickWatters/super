@@ -37,13 +37,19 @@ class DatasetFeedService(data_feed_pb2_grpc.DatasetFeedServicer):
     def registerjob(self, request, context):
         job_id = request.job_id
         if job_id in self.training_jobs:
-            return data_feed_pb2.MessageResponse(message="Job {} already exists. Please register with a different job id".format(job_id))
+            return data_feed_pb2.RegisterJobResponse(message="Job {} not regsistered".format(job_id),
+                                                     successfully_registered = False,
+                                                     batches_per_epoch=self.coordinator.batches_per_epoch,
+                                                     dataset_length = len(self.coordinator))
         else:
             self.training_jobs[job_id] = MLTrainingJob(job_id=job_id, 
                                                    coordinator=self.coordinator,
                                                    args=self.args)
             self.training_jobs[job_id].start_data_prep_workers()
-            return data_feed_pb2.MessageResponse(message="Job {} successfully regsistered".format(job_id))
+            return data_feed_pb2.RegisterJobResponse(message="Job {} successfully regsistered".format(job_id),
+                                                     successfully_registered = True,
+                                                     batches_per_epoch=self.coordinator.batches_per_epoch,
+                                                     dataset_length = len(self.coordinator))
     
     def getBatches(self, request, context):
         job_id = request.job_id

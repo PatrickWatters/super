@@ -28,6 +28,8 @@ class DataFeedCoordinator():
             self._blob_classes = self._classify_blobs_local()
         self.use_random_sampling = False
         self.batchSets:Dict[str, BatchSet] = {}
+        self.batches_per_epoch = (len(self) + self.batch_size -1)// self.batch_size
+    
     
     def __len__(self) -> int:
         return sum(len(class_items) for class_items in self._blob_classes.values())
