@@ -64,26 +64,27 @@ def main():
     print("=> creating model '{}'".format(args.arch))
     model = models.__dict__[args.arch]()
 
-    if not torch.cuda.is_available() and not torch.backends.mps.is_available():
-        print("using CPU, this will be slow")
+    #if not torch.cuda.is_available() and not torch.backends.mps.is_available():
+    #    print("using CPU, this will be slow")
     
-    if torch.cuda.is_available():
-        if args.gpu:
-            print("using cuda:'{}' device".format(args.arch))
-            device = torch.device('cuda:{}'.format(args.gpu))
-            model = model.cuda(args.gpu)
-        else:
-            print("using cuda device")
-            device = torch.device("cuda")
-            model = model.to(device)
-    elif torch.backends.mps.is_available():
-        print("using mps device")
-        device = torch.device("mps")
-        model = model.to(device)
-    else:
-        print("using CPU, this will be slow")
-        device = torch.device("cpu")
-    
+    #if torch.cuda.is_available():
+    #    if args.gpu:
+    #        print("using cuda:'{}' device".format(args.arch))
+    #        device = torch.device('cuda:{}'.format(args.gpu))
+    #        model = model.cuda(args.gpu)
+    #    else:
+    #        print("using cuda device")
+    #        device = torch.device("cuda")
+    #        model = model.to(device)
+    #elif torch.backends.mps.is_available():
+    #    print("using mps device")
+    #    device = torch.device("mps")
+    #    model = model.to(device)
+    #else:
+    #    print("using CPU, this will be slow")
+    #    device = torch.device("cpu")
+    print("using CPU, this will be slow")
+    device = torch.device("cpu")
     profiler = TrainingProfiler(args,args.trail_id,args.jobid, torch.cuda.device_count() )
 
     # define loss function (criterion) and optimizer
