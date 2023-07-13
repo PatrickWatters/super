@@ -29,7 +29,7 @@ class MLTrainingJob():
         self.redis_client:RedisClient = RedisClient(args.redis_host,args.redis_port)
         self.source_system = args.source_system
         if self.source_system == 's3':
-            self.lambda_wrapper = LambdaWrapper(args.s3_bucket, args.redis_host, args.redis_port,function_name=args.lambda_func_name)
+            self.lambda_wrapper = LambdaWrapper(args.s3_bucket, args.redis_host, args.redis_port,function_name=args.dataload_lambda)
         
     def fetch_batch_data(self, batchId):
         data = None
