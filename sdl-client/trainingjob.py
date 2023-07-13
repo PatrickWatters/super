@@ -99,10 +99,6 @@ def main():
          transforms.ToTensor(), normalize]
     )
 
-    #custom SDL Part
-    print(response_message)
-    if not successfully_registered:
-        exit()
     
     train_dataset = SDLDataset(job_id=args.jobid, length=dataset_len, transform=transform, target_transform=None)
     sdl_sampler = SDLSampler(job_id=args.jobid, num_batches=batches_per_epoch, sdl_client =client)

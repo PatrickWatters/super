@@ -19,7 +19,7 @@ class CMSClient(object):
     Client for gRPC functionality
     """
     def __init__(self):
-        self.host = '34.213.176.253'
+        self.host = 'localhost'
         self.server_port = 50052
 
         # instantiate a channe
