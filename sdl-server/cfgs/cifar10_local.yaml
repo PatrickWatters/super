@@ -5,7 +5,7 @@ data_dir: /Users/patrickwatters/Projects/datasets/sdl-cifar10
 s3_bucket: sdl-cifar10
 #redis_host: super.rdior4.ng.0001.usw2.cache.amazonaws.com
 redis_host: 34.213.176.253
-redis_port: 6379
+redis_port: 6378
 dataload_lambda: lambda_dataloader_pytorch
 gprc_port: 50052
 grpc_workers: 10
