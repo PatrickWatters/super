@@ -9,6 +9,7 @@ import io
 from client import CMSClient
 import base64
 import time
+import gzip
 
 client=CMSClient()
 
@@ -27,9 +28,20 @@ class SDLDataset(Dataset):
         batch_id = input.batchid
         cache_hit = True
         end = time.time()
-        torch_imgs, torch_lables = self.convert_json_batch_to_torch_format(batch_data)
+        torch_imgs, torch_lables = self.deserialize_torch_bacth(batch_data)
+        #torch_imgs, torch_lables = self.convert_json_batch_to_torch_format(batch_data)
         prep_time = time.time() - end
         return torch_imgs, torch_lables, batch_id, cache_hit, prep_time
+    
+    def deserialize_torch_bacth(self,batch_data):
+        batch_data = base64.b64decode(batch_data)
+        decompressed = gzip.decompress(batch_data)
+        buffer = io.BytesIO(decompressed)
+        decoded_batch = torch.load(buffer)
+        batch_imgs = decoded_batch['inputs']
+        batch_labels = decoded_batch['labels']
+        return batch_imgs,batch_labels
+
 
     def convert_json_batch_to_torch_format(self,batch_data):
         samples = json.loads(batch_data)
