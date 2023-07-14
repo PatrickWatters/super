@@ -28,8 +28,8 @@ class SDLDataset(Dataset):
         batch_id = input.batchid
         cache_hit = True
         end = time.time()
-        torch_imgs, torch_lables = self.deserialize_torch_bacth(batch_data)
-        #torch_imgs, torch_lables = self.convert_json_batch_to_torch_format(batch_data)
+        #torch_imgs, torch_lables = self.deserialize_torch_bacth(batch_data)
+        torch_imgs, torch_lables = self.convert_json_batch_to_torch_format(batch_data)
         prep_time = time.time() - end
         return torch_imgs, torch_lables, batch_id, cache_hit, prep_time
     
