@@ -10,7 +10,7 @@ import io
 import torch
 from torch.utils.data import DataLoader
 # Imports local packages.
-from super_tools.client import CMSClient
+from client import CMSClient
 import os
 
 class SDLSampler():

@@ -4,7 +4,7 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
 # Imports other packages.
-import lightning as L
+import  as L
 import torch.nn.functional as F
 
 from lightning.pytorch.utilities.model_helpers import get_torchvision_model

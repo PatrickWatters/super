@@ -1,6 +1,6 @@
 import grpc
-import data_feed_pb2
-import data_feed_pb2_grpc
+import data_feed_pb2 as data_feed_pb2
+import data_feed_pb2_grpc as data_feed_pb2_grpc
 import time
 import csv
 import torch
@@ -19,7 +19,8 @@ class CMSClient(object):
     Client for gRPC functionality
     """
     def __init__(self):
-        self.host = 'localhost'
+        self.host = '10.0.1.197'
+        #self.host = 'localhost'
         self.server_port = 50052
 
         # instantiate a channe
@@ -33,23 +34,11 @@ class CMSClient(object):
         messageRequest = data_feed_pb2.RegisterJobRequest(job_id=job_id)
         response = self.stub.registerjob(messageRequest)
         #response = self.stub.registerjob(messageRequest)
-        return response
+        return response.message, response.successfully_registered,response.batches_per_epoch,response.dataset_length
     
     def getBatches(self,job_id:int):
         messageRequest = data_feed_pb2.GetBatchesRequest(job_id=job_id)
         response = self.stub.getBatches(messageRequest)
         return response
-    
-    def getBatchStream(self,job_id:int):
-        couneter =0
-        messageRequest = data_feed_pb2.GetBatchesRequest(job_id=job_id)
-        samples = self.stub.getBatches(messageRequest)
-        end = time.time()
-        for s in samples:
-            couneter+=1
-            print(couneter)
-            if couneter ==50:
-                print('total time: {}'.format(time.time()-end))
-                break
 
 

@@ -4,13 +4,14 @@ import multiprocessing as mp
 import logging
 import sys
 from typing import Dict
-# Imports other packages.
+
+# Imports grpc realated packages.
 import grpc
+import data_feed_pb2
+import data_feed_pb2_grpc
 # Imports local packages.
 from args import parse_args
 from job import MLTrainingJob
-import data_feed_pb2
-import data_feed_pb2_grpc
 
 # Logging initialization
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ class DatasetFeedService(data_feed_pb2_grpc.DatasetFeedServicer):
                                     data = batch_data,
                                     label = str(batch_id))
 def start(kill_event, args):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(args.grpc_maxworkers))
     data_feed_pb2_grpc.add_DatasetFeedServicer_to_server(
         DatasetFeedService(kill_event,args), server)
     server.add_insecure_port("[::]:" + args.gprc_port)
@@ -96,9 +97,8 @@ def serve(args):
     kill_event.set()
     shutdown(grpc_server)
 
-
 if __name__ == "__main__":
-    args = parse_args(default_config_file='/home/ubuntu/super/sdl-server/cfgs/cifar10_local.yaml')
-    #args = parse_args(default_config_file='cfgs/cifar10_local.yaml')
-
+    #args = parse_args(default_config_file='/home/ubuntu/super/sdl-server/cfgs/cifar10_local.yaml')
+    args = parse_args(default_config_file='super-server/cfgs/s3_cifar10.yaml')
+    print(args)
     serve(args)

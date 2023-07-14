@@ -94,3 +94,6 @@ dependencies:
       - redis==4.6.0
       - s3transfer==0.6.1
       - urllib3==1.26.16
+
+
+#for mac m1 https://github.com/pietrodn/grpcio-mac-arm-build/releases/tag/1.50.0

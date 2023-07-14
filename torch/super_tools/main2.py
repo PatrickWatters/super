@@ -6,8 +6,7 @@ import resource
 # Imports PyTorch packages.
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.progress.tqdm_progress import TQDMProgressBar
-from pytorch_lightning.utilities.seed import seed_everything
-from lightning.pytorch.utilities.model_helpers import get_torchvision_model
+from lightning_fabric.utilities.seed import seed_everything as new_seed_everything
 
 # Imports other packages.
 from configargparse import Parser
@@ -15,8 +14,8 @@ from PIL import ImageFile
 
 # Imports local packages.
 from args import parse_args
-from super_tools.super import super_loader
-from super_tools.supermodel import SuperLightningModel
+from super import super_loader
+from supermodel import SuperLightningModel
 
 import os
 # Prevents PIL from throwing invalid error on large image files.
@@ -52,7 +51,7 @@ def main(args):
     # Sets global seed for reproducibility.
     # Note: Due to CUDA operations which cannot be made deterministic,
     # the code will still not be perfectly reproducible.
-    seed_everything(seed=42, workers=True)
+    new_seed_everything(seed=42, workers=True)
     args.batch_size = None
     args.jobid = os.getpid()
 

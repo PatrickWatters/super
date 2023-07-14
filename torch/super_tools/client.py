@@ -1,6 +1,6 @@
 import grpc
-import super_tools.data_feed_pb2 as data_feed_pb2
-import super_tools.data_feed_pb2_grpc as data_feed_pb2_grpc
+import data_feed_pb2 as data_feed_pb2
+import data_feed_pb2_grpc as data_feed_pb2_grpc
 import time
 import csv
 import torch

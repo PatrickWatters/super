@@ -80,7 +80,7 @@ class Dataset():
         else:
             base_sampler = SequentialSampler(self)
         
-        batch_sampler = BatchSampler(base_sampler, batch_size=self.batch_size, drop_last=False)
+        batch_sampler = BatchSampler(base_sampler, batch_size=self.batch_size, drop_last=self.drop_last)
         
         for i,batch_indiceis in enumerate(batch_sampler):
                 batch_id = abs(hash(frozenset(batch_indiceis)))

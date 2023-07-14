@@ -22,8 +22,8 @@ class MLTrainingJob():
         self.job_started_timestamp = None
         self.job_finished_timestamp = None
         self.coordinator = coordinator
-        self.maxworkers = 20
-        self.prepared_batches = queue.Queue(maxsize=25)
+        self.maxworkers = args.max_job_workers
+        self.prepared_batches = queue.Queue(maxsize=args.max_lookahead)
         self.job_end = False
         self.activeBatchSetId = None
         self.redis_client:RedisClient = RedisClient(args.redis_host,args.redis_port)
