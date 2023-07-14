@@ -37,7 +37,7 @@ class SDLSampler():
 model_names = sorted(name for name in models.__dict__ if name.islower() and not name.startswith("__") and callable(models.__dict__[name]))
 parser = argparse.ArgumentParser(description="PyTorch Training")
 parser.add_argument("-a","--arch",metavar="ARCH",default="resnet18",choices=model_names,help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",)
-parser.add_argument("-j", "--num-workers", default=2, type=int, metavar="N", help="number of data loading workers (default: 4)")
+parser.add_argument("-j", "--num-workers", default=0, type=int, metavar="N", help="number of data loading workers (default: 4)")
 parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="manual epoch number (useful on restarts)")
 parser.add_argument("-epochs","--epochs", default=1, type=int, metavar="N", help="number of total epochs to run")  # default 90
 parser.add_argument("--lr", "--learning-rate", default=0.1, type=float, metavar="LR", help="initial learning rate", dest="lr")
