@@ -113,7 +113,7 @@ def main():
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args)
         # train next epoch
-        train(train_loader, model, criterion, optimizer, epoch, args,device, client=client, profiler=profiler)
+        train(train_loader, model, criterion, optimizer, epoch+1, args,device, client=client, profiler=profiler)
         
         #acc1 = validate(val_loader, model, criterion, args) # remember best acc@1 and save checkpoint
 
