@@ -124,6 +124,14 @@ def deserialize_torch_bacth(batch_data):
     batch_labels = decoded_batch['labels']
     return size_of_tensor_in_bytes(batch_imgs)
 
+def deserialize_torch_bacth(batch_data):
+    batch_data = base64.b64decode(batch_data)
+    decompressed = gzip.decompress(batch_data)
+    buffer = io.BytesIO(decompressed)
+    decoded_batch = torch.load(buffer)
+    batch_imgs = decoded_batch['inputs']
+    batch_labels = decoded_batch['labels']
+    return size_of_tensor_in_bytes(batch_imgs)
 
 def run_lambda_transform_test(numBatches = 5 ):
     stats =[]
