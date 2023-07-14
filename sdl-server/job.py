@@ -65,7 +65,7 @@ class MLTrainingJob():
             data = paylaod['batch_data']
             #data = batchId
             self.coordinator.set_batch_inProgress(self.activeBatchSetId,batchId,False)
-        self.prepared_batches.put((data, batchId,cache_hit))
+        self.prepared_batches.put((data, batchId))
         return data,batchId
 
     def prep_batches(self):
@@ -88,7 +88,7 @@ class MLTrainingJob():
     
     def next_batch(self):
         batch_data = self.prepared_batches.get()
-        return batch_data[0], batch_data[1], batch_data[2]
+        return batch_data[0], batch_data[1]
     
     def start_data_prep_workers(self):
         daemon = Thread(target=self.prep_batches, daemon=True, name='{} - Prep Daemon'.format(self.job_id))
