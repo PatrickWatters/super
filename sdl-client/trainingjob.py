@@ -47,7 +47,7 @@ parser.add_argument("-p", "--print-freq", default=1, type=int, metavar="N", help
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument("--batch-size", type=int, default=256)
 parser.add_argument("--pin-memory", type=int, default=0)
-parser.add_argument("-tid","--trail-id", default=1, type=int, help="trialid")  # default 90 default=random.randint(0,100)
+parser.add_argument("-tid","--trail-id", default='1', help="trialid")  # default 90 default=random.randint(0,100)
 
 best_acc1 = 0
 
